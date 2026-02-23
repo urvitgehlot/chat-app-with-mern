@@ -1,53 +1,69 @@
-import React, { useEffect, useState } from 'react'
-import RecentMessageComponent from '../components/RecentMessageComponent';
-import SearchIcon from "../assets/icons/search.png";
+<!DOCTYPE html>
 
-function Home() {
-  const [recentMessages, setRecentMessages] = useState([])
-  const [chats, setChats] = useState([])
+<html class="dark" lang="en">
 
-  useEffect(() => {
-    const recentUserMessages = [
-      {
-        id: 1,
-        userName: "User 1",
-        userImage: "https://images.unsplash.com/photo-1728577740843-5f29c7586afe",
-        recentMessage: "XYZ",
-        recentMessageDate: new Date('2025-11-08')
-      },
-      {
-        id: 2,
-        userName: "User 2",
-        userImage: 'https://images.unsplash.com/photo-1740252117013-4fb21771e7ca',
-        recentMessage: "ABC",
-        recentMessageDate: new Date('2025-11-04')
-      },
-      {
-        id: 3,
-        userName: "User 3",
-        userImage: "https://images.unsplash.com/photo-1750535135685-7d3322ba2e36",
-        recentMessage: "HY",
-        recentMessageDate: new Date('2025-11-02')
-      },
-      {
-        id: 4,
-        userName: "User 4",
-        userImage: "https://plus.unsplash.com/premium_photo-1739786996040-32bde1db0610",
-        recentMessage: "Hello",
-        recentMessageDate: new Date('2025-10-10')
-      },
-    ];
-    setRecentMessages(recentUserMessages)
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Chat List/Contacts Page</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap"
+        rel="stylesheet" />
+    <!-- Material Icons -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Theme Config -->
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b6cee",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                        "sidebar-dark": "#161e2d", // Custom sidebar color for contrast
+                        "surface-dark": "#232f48",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar for Webkit */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
 
-    setChats(chats)
-  }, [])
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
 
-  return (
-     <div class="flex h-screen w-full">
-        {/* <!-- LEFT SIDEBAR --> */}
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #232f48;
+            border-radius: 20px;
+        }
+    </style>
+</head>
+
+<body class="bg-background-dark text-white font-display antialiased overflow-hidden">
+    <div class="flex h-screen w-full">
+        <!-- LEFT SIDEBAR -->
         <aside
             class="flex w-full md:w-[380px] lg:w-[420px] flex-col border-r border-[#232f48] bg-sidebar-dark shrink-0 h-full">
-            {/* <!-- Sidebar Header --> */}
+            <!-- Sidebar Header -->
             <header class="flex items-center justify-between px-5 py-4 shrink-0">
                 <div class="flex items-center gap-3">
                     <div class="bg-center bg-no-repeat bg-cover rounded-full size-10 border border-[#232f48] relative cursor-pointer"
@@ -68,7 +84,7 @@ function Home() {
                     </button>
                 </div>
             </header>
-            {/* <!-- Search Bar --> */}
+            <!-- Search Bar -->
             <div class="px-5 pb-2 shrink-0">
                 <div
                     class="flex w-full items-center rounded-lg bg-surface-dark h-10 border border-transparent focus-within:border-primary/50 transition-colors">
@@ -80,7 +96,7 @@ function Home() {
                         placeholder="Search or start new chat" type="text" />
                 </div>
             </div>
-            {/* <!-- Filters / Tags (Optional visual flair) --> */}
+            <!-- Filters / Tags (Optional visual flair) -->
             <div class="px-5 py-3 flex gap-2 shrink-0 overflow-x-auto custom-scrollbar">
                 <button
                     class="px-3 py-1 rounded-full bg-surface-dark text-xs font-medium text-white whitespace-nowrap hover:bg-primary hover:text-white transition-colors">All</button>
@@ -91,9 +107,9 @@ function Home() {
                 <button
                     class="px-3 py-1 rounded-full bg-transparent border border-surface-dark text-xs font-medium text-[#92a4c9] whitespace-nowrap hover:bg-surface-dark hover:text-white transition-colors">Archived</button>
             </div>
-            {/* <!-- Chat List --> */}
+            <!-- Chat List -->
             <div class="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
-                {/* <!-- Item 1: Unread & Active-ish --> */}
+                <!-- Item 1: Unread & Active-ish -->
                 <div
                     class="group flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-surface-dark/50 transition-colors border-l-[3px] border-primary bg-surface-dark/30">
                     <div class="relative shrink-0">
@@ -117,7 +133,7 @@ function Home() {
                         </div>
                     </div>
                 </div>
-                {/* <!-- Item 2: Unread Group --> */}
+                <!-- Item 2: Unread Group -->
                 <div
                     class="group flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-surface-dark/50 transition-colors border-l-[3px] border-transparent">
                     <div class="relative shrink-0">
@@ -138,11 +154,11 @@ function Home() {
                         </div>
                     </div>
                 </div>
-                {/* <!-- Item 3: Read --> */}
+                <!-- Item 3: Read -->
                 <div
                     class="group flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-surface-dark/50 transition-colors border-l-[3px] border-transparent">
                     <div class="relative shrink-0">
-                        <div class="bg-center bg-no-repeat bg-cover rounded-full size-12 grayscale-20"
+                        <div class="bg-center bg-no-repeat bg-cover rounded-full size-12 grayscale-[20%]"
                             data-alt="Portrait of John Smith"
                             style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCvbxd6a-NdKQvi6ECR2OsVpAg91A-BqQLYBjQh7P1bmUOTztbbuT_66FXqBtle5AccuWINQpC9zbtyQNkPEQNFgjgMwIzdYrilU-PTtx_lLGvLq8FBqoVUVpU_Jtpic2hQQdSPhhdUs8YiNTl4DXzT72iyIDqi1NwUBbxOFJ8cBNhjMJM4qootGvbPfnREoUdvp-GeADejwJro-xCbGEBYdx0AvsX7E6Z3EhsBttU8So9XVfGEEPcOIo1fSXmqimCT1Fbo0DKShc0");'>
                         </div>
@@ -154,16 +170,16 @@ function Home() {
                         </div>
                         <div class="flex justify-between items-center">
                             <p class="text-[#92a4c9] text-sm font-normal truncate pr-2">Sounds good, thanks!</p>
-                            {/* <!-- Read receipt icon --> */}
+                            <!-- Read receipt icon -->
                             <span class="material-symbols-outlined text-[16px] text-primary">done_all</span>
                         </div>
                     </div>
                 </div>
-                {/* <!-- Item 4 --> */}
+                <!-- Item 4 -->
                 <div
                     class="group flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-surface-dark/50 transition-colors border-l-[3px] border-transparent">
                     <div class="relative shrink-0">
-                        <div class="bg-center bg-no-repeat bg-cover rounded-full size-12 grayscale-20"
+                        <div class="bg-center bg-no-repeat bg-cover rounded-full size-12 grayscale-[20%]"
                             data-alt="Portrait of Sarah Connor"
                             style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDzaVVlt22Ik_OlvSeOusMmQuJmZKXnsJwHb751D7_jNUUoO97_2PjxxBN42Ix_-j8CfSHLQn2AGOvRHfMjc-TOlcHd6onvdEGOSlM8MxtnWLyLL9iOFSOKM5HAlyXpmXjOXSi0jYaWvQpiBvUVXw8-khtlkZDRO36MGXCMVZAcsV-XsrIs3NadhqchHPfji7LgW0SSBDSvoJtF9iCMIW9UMRdtK_OM9lakUSxYkDj6r0YOIpL2_28iBNxnkRbBdhKFOpr6PrKlU2Y");'>
                         </div>
@@ -180,11 +196,11 @@ function Home() {
                         </div>
                     </div>
                 </div>
-                {/* <!-- Item 5 --> */}
+                <!-- Item 5 -->
                 <div
                     class="group flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-surface-dark/50 transition-colors border-l-[3px] border-transparent">
                     <div class="relative shrink-0">
-                        <div class="bg-center bg-no-repeat bg-cover rounded-full size-12 grayscale-20"
+                        <div class="bg-center bg-no-repeat bg-cover rounded-full size-12 grayscale-[20%]"
                             data-alt="Portrait of David Miller"
                             style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCXdEUQVIOPRNmKFmHExv57jg24XX184Ob_4MluEBWp_p6w8B3LsGZm1g6VCcZ43nCusg9duQgN9DQ-VQxP2IFFRi9FfD263UEQxw-9kevmedWKDrfGvt0n0EKGaCWRjleCdr-bYjnDKbo0nhNxZEru38Xzevum3DpaDFyE3Rie5-wTmfLiVPIonKXwnCDwQMDEjZI7vOWc3YrEDb06W3-qnyK8Hmw6haWiELGUhYxBPrgx3j3r7Dy20crQoZLCvsxAoXB4bQErM5c");'>
                         </div>
@@ -199,11 +215,11 @@ function Home() {
                         </div>
                     </div>
                 </div>
-                {/* <!-- Item 6 --> */}
+                <!-- Item 6 -->
                 <div
                     class="group flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-surface-dark/50 transition-colors border-l-[3px] border-transparent">
                     <div class="relative shrink-0">
-                        <div class="bg-center bg-no-repeat bg-cover rounded-full size-12 grayscale-20"
+                        <div class="bg-center bg-no-repeat bg-cover rounded-full size-12 grayscale-[20%]"
                             data-alt="Abstract gradient avatar"
                             style="background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
                     </div>
@@ -217,11 +233,11 @@ function Home() {
                         </div>
                     </div>
                 </div>
-                {/* <!-- Item 7 --> */}
+                <!-- Item 7 -->
                 <div
                     class="group flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-surface-dark/50 transition-colors border-l-[3px] border-transparent">
                     <div class="relative shrink-0">
-                        <div class="bg-center bg-no-repeat bg-cover rounded-full size-12 grayscale-20"
+                        <div class="bg-center bg-no-repeat bg-cover rounded-full size-12 grayscale-[20%]"
                             data-alt="Portrait of Emily Blunt"
                             style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuC-4RpKTQN4wS0zVaafCawglH3cpZIqIzs5g2SRzYzeVIEUpK-rx-G7MsBiL5vHaQeedFX00qcslJA3O9Oo-bLzHwlss2nCvja8D2g0NFpSxLVpa1QPRaocproOMNiaY7OQaRWVmE-CITPOjwP16d_7gzxTMMAUkJxqzT9qEFlbgPl8dKWySbSwkZ-R3O8s2eSiznahl6ri12uJWSKE80XuwE_oNXtlkBddTbPtMgWQ4MQxL3RifguB31-zrLmo9rCIg6Jn28yLOvI");'>
                         </div>
@@ -238,11 +254,11 @@ function Home() {
                         </div>
                     </div>
                 </div>
-                {/* <!-- Item 8 --> */}
+                <!-- Item 8 -->
                 <div
                     class="group flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-surface-dark/50 transition-colors border-l-[3px] border-transparent">
                     <div class="relative shrink-0">
-                        <div class="bg-center bg-no-repeat bg-cover rounded-full size-12 grayscale-20"
+                        <div class="bg-center bg-no-repeat bg-cover rounded-full size-12 grayscale-[20%]"
                             data-alt="Portrait of Michael Chen"
                             style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAmawD0xEIvKURrFYISLrcgEU44o4RoHHEI8iayjt5RfPo6AcwMSx96R8jCIXVaMCiG1LEiT-yC40a4GMFpwVwA4AORaSvLPkIg87qUR-1f0J5_jGJpkhHrg_jwPM3NCbVzOoxHFg92D2lXzLZrQU8b92y8mChQaoAvp286oDTusq6vlnXgp8c6KlqoW8M5wAqtS5EnHUZPfSurth2-gOGCsxJdOpd4md1ud5GwLGOew8rMU_RQLDwyLr5gb_pq4goD3Alk_6159u8");'>
                         </div>
@@ -259,9 +275,9 @@ function Home() {
                 </div>
             </div>
         </aside>
-        {/* <!-- RIGHT MAIN CONTENT (Empty State) --> */}
+        <!-- RIGHT MAIN CONTENT (Empty State) -->
         <main class="hidden md:flex flex-1 flex-col items-center justify-center bg-background-dark relative p-8">
-            {/* <!-- Background Decoration (Optional subtle pattern) --> */}
+            <!-- Background Decoration (Optional subtle pattern) -->
             <div class="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
                 <div
                     class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[100px]">
@@ -288,7 +304,6 @@ function Home() {
             </div>
         </main>
     </div>
-  )
-}
+</body>
 
-export default Home
+</html>

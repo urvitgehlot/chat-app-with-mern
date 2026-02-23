@@ -1,0 +1,8 @@
+* {
+    font-family: "Plus Jakarta Sans", "Noto Sans", "sans-serif";
+}
+
+/* Smooth transitions */
+.input-transition {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}

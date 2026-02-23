@@ -1,0 +1,45 @@
+:root {
+    --app-bg: oklch(0.2003 0.0259 263.72);
+    --app-bg-surface: oklch(0.2348 0.0314 262.56);
+
+    /* --primary: oklch(0.6799 0.172 254.69); */
+    --primary: oklch(0.5677 0.2072 262.13);
+    /* --secondary: oklch(0.6799 0.172 254.69); */
+
+
+    --text-primary: oklch(1 0 0);
+    --text-secondary: oklch(0.7177 0.0579 264.61);
+
+    --border-color: oklch(0.388 0.0642 262.94);
+}
+
+.dark {
+    --app-bg: oklch(0.2003 0.0259 263.72);
+    --app-bg-surface: oklch(0.2348 0.0314 262.56);
+
+    --primary: oklch(0.6799 0.172 254.69);
+    /* --secondary: oklch(0.6799 0.172 254.69); */
+
+
+    --text-primary: oklch(1 0 0);
+    --text-secondary: oklch(0.7177 0.0579 264.61);
+
+    --border-color: oklch(0.388 0.0642 262.94);
+
+}
+
+@theme {
+    --color-bg-app: var(--app-bg);
+    /* --color-bg-surface-color: var(--app-bg-surface-color); */
+    --color-bg-surface: var(--app-bg-surface);
+
+    --color-primary: var(--primary);
+
+    --color-text-primary: var(--text-primary);
+    --color-text-secondary: var(--text-secondary);
+
+    --color-border: var(--border-color);
+
+    /* Smooth transitions */
+    /* --transition-border: border-color 0.2s ease, box-shadow 0.2s ease; */
+}

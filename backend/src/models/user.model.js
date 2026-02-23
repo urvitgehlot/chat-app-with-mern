@@ -25,6 +25,9 @@ const userSchema = new Schema(
         avatarUrl: {
             type: String,
         },
+        aboutMe: {
+            type: String,
+        },
         lastActiveAt: {
             type: Date,
         },
