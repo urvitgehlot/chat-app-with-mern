@@ -20,6 +20,11 @@ const messageReactionSchema = new Schema(
     {
         timestamps: true,
     }
-)
+);
+
+messageReactionSchema.index({
+    messageId: 1,
+    userId: 1
+}, { unique: true });
 
 export const MessageReaction = mongoose.model('MessageReaction', messageReactionSchema)

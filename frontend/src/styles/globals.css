@@ -6,3 +6,40 @@
 .input-transition {
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
+
+.loader {
+    width: 48px;
+    height: 48px;
+    border: 5px solid #FFF;
+    border-bottom-color: transparent;
+    border-radius: 50%;
+    display: inline-block;
+    box-sizing: border-box;
+    animation: rotation 1s linear infinite;
+}
+
+@keyframes rotation {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* hide scrollbar but keep scrolling */
+.scrollbar-hide::-webkit-scrollbar {
+    /* display: none; */
+    width: 6px;
+}
+
+.scrollbar-hide::-webkit-scrollbar-thumb {
+    background-color: rgba(100, 100, 100, 0.3);
+    border-radius: 9999px;
+}
+
+.scrollbar-hide {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 100, 100, 0.3) transparent;
+}

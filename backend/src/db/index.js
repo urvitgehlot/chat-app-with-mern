@@ -6,6 +6,7 @@ const connectDB = async () => {
         const connectionInstance = await mongoose.connect(
             process.env.MONGODB_URI,
             {
+                // family: 4, // Use IPv4
                 dbName: DB_NAME
             }
         )

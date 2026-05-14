@@ -1,11 +1,12 @@
 import mongoose, { mongo, Schema } from "mongoose";
-import ApiError from "../utils/ApiError";
-import asyncHandler from "../utils/asyncHandler";
-import { uploadOnCloudinary } from "../utils/cloudinary";
-import { DirectChat } from "../models/directChat.model";
-import { Message } from "../models/message.model";
-import { Attachment } from "../models/attachment.model";
-import { GroupMembership } from "../models/groupMembership.model";
+import ApiError from "../utils/ApiError.js";
+import asyncHandler from "../utils/asyncHandler.js";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { DirectChat } from "../models/directChat.model.js";
+import { Message } from "../models/message.model.js";
+import { Attachment } from "../models/attachment.model.js";
+import { GroupMembership } from "../models/groupMembership.model.js";
+import ApiResponse from "../utils/ApiResponse.js";
 
 const sendMessage = asyncHandler(async (req, res) => {
     // get content, chatType, sentToId, replyToMessageId
@@ -95,6 +96,25 @@ const sendMessage = asyncHandler(async (req, res) => {
 
 })
 
+const getUserAllMessages = asyncHandler(async (req, res) => {
+    const { chatId } = req.query;
+
+    if (!chatId) {
+        throw new ApiError(400, "Chat Id is required");
+    }
+
+    const directChat = await DirectChat.findById(chatId)
+        .populate("participants", "_id displayName username avatarUrl lastActiveAt");
+
+    const messages = await Message.find({
+        directChat: chatId,
+        chatType: "direct",
+    }).sort({ sentAt: -1 }).populate("senderId", "_id displayName username avatarUrl lastActiveAt");
+
+    return res.status(200).json(new ApiResponse(200, { directChat: directChat, messages: messages }, "Messages fetched successfully"));
+});
+
 export {
-    sendMessage
+    sendMessage,
+    getUserAllMessages
 }

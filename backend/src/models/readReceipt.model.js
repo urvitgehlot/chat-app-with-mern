@@ -1,4 +1,4 @@
-import mongoose, {Schema} from "mongoose"
+import mongoose, { Schema } from "mongoose"
 
 const readReceiptSchema = new Schema(
     {
@@ -16,6 +16,11 @@ const readReceiptSchema = new Schema(
     {
         timestamps: true,
     }
-)
+);
+
+readReceiptSchema.index({
+    messageId: 1,
+    userId: 1
+}, { unique: true });
 
 export const ReadReceipt = mongoose.model("ReadReceipt", readReceiptSchema)

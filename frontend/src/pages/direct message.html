@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Active Chat Page</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap"
+        rel="stylesheet" />
+    <!-- Material Icons -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Theme Configuration -->
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b6cee",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                        "surface-dark": "#161b26", // Slightly lighter than background-dark for panels
+                        "surface-hover": "#232f48",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar for cleaner look */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #232f48;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3b4b6a;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .icon-filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+
+<body
+    class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white h-screen flex overflow-hidden">
+    <!-- Sidebar Navigation -->
+    <aside
+        class="w-80 flex-shrink-0 flex flex-col border-r border-gray-200 dark:border-white/10 bg-white dark:bg-[#111722] z-20 hidden md:flex">
+        <!-- Header -->
+        <div class="h-16 flex items-center gap-3 px-6 border-b border-gray-200 dark:border-white/10">
+            <div class="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-white">
+                <span class="material-symbols-outlined text-[20px]">chat_bubble</span>
+            </div>
+            <h1 class="text-lg font-bold">Connect</h1>
+        </div>
+        <!-- Navigation Links -->
+        <div class="px-3 py-4 flex flex-col gap-1">
+            <a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary dark:bg-[#232f48] dark:text-white"
+                href="#">
+                <span class="material-symbols-outlined icon-filled">chat</span>
+                <span class="text-sm font-medium">Chats</span>
+                <span class="ml-auto bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full">4</span>
+            </a>
+            <a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 dark:text-[#92a4c9] hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                href="#">
+                <span class="material-symbols-outlined">call</span>
+                <span class="text-sm font-medium">Calls</span>
+            </a>
+            <a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 dark:text-[#92a4c9] hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                href="#">
+                <span class="material-symbols-outlined">contacts</span>
+                <span class="text-sm font-medium">Contacts</span>
+            </a>
+        </div>
+        <!-- Recent Chats Title -->
+        <div class="px-6 pt-4 pb-2">
+            <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Direct Messages</h2>
+        </div>
+        <!-- Chat List -->
+        <div class="flex-1 overflow-y-auto px-3 pb-4 space-y-1">
+            <!-- Active Item -->
+            <div
+                class="flex items-center gap-3 p-3 rounded-xl bg-slate-100 dark:bg-[#232f48] cursor-pointer relative group">
+                <div class="relative shrink-0">
+                    <div class="bg-center bg-no-repeat bg-cover rounded-full h-10 w-10"
+                        data-alt="Portrait of a young woman with curly hair"
+                        style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBjWYJD2U74K3Gw33q-zwp6HFwB09kqW9O7mat75IIYTfCW86ei6WlI3kGlI0k1iEYYiES12qQrUxXKN6vBGPJOVVLCsA8X7aH9H_R_b18UKQOOdK31L35h6S2eb_c5uEvPTkKN7j1qjHK4jz8FO6EdulH-Dqzk9MthhPQubkHpnUEXe4Y7kDGs3AgtnLjo6uO9elfXo4gPnPqpKXL2Em-Y1J7epsc_YW0l5yFhQ3MU52esR9q2cNACWi2WqqTEHBsqejh1TB09_ck");'>
+                    </div>
+                    <span
+                        class="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-white dark:border-[#232f48]"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-baseline mb-0.5">
+                        <p class="text-sm font-semibold truncate">Sarah Miller</p>
+                        <p class="text-[11px] text-slate-400 dark:text-slate-400">2m</p>
+                    </div>
+                    <p class="text-xs text-slate-500 dark:text-[#92a4c9] truncate">Yes, I'm reviewing them now...</p>
+                </div>
+            </div>
+            <!-- Inactive Item 1 -->
+            <div
+                class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer transition-colors">
+                <div class="relative shrink-0">
+                    <div class="bg-center bg-no-repeat bg-cover rounded-full h-10 w-10"
+                        data-alt="Portrait of a man with glasses smiling"
+                        style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAXa43MsIDsZEFBfkYkDlhgxXIBRkJxoefhO_frF0cKFdmsVqGLtN0uXwWPUqeYnMeT-9itrKVUoRlq5PzVjbnCQ1SUkEpGxLbJZdrdUYfAaEL2PPUmQn2--Le9v87aI_8cgSKWgc92t5T06VLSTXFu4AhLE_8nPUBicCAuVEVDrvaofZ6yYnXU66qUak1iYWm1GpASeUm_Qc5cgHkkYyMhxsPgwaXLJWshgUyUaINeE-Gphk7862vemvuhDY8iRG6X_Vua8LhZksU");'>
+                    </div>
+                    <span
+                        class="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-slate-400 border-2 border-white dark:border-[#111722]"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-baseline mb-0.5">
+                        <p class="text-sm font-medium truncate">David Park</p>
+                        <p class="text-[11px] text-slate-400 dark:text-slate-500">1h</p>
+                    </div>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 truncate">Can we reschedule the meeting?</p>
+                </div>
+            </div>
+            <!-- Inactive Item 2 -->
+            <div
+                class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer transition-colors">
+                <div class="relative shrink-0">
+                    <div class="bg-center bg-no-repeat bg-cover rounded-full h-10 w-10"
+                        data-alt="Portrait of a woman with short hair"
+                        style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBryI8O3DCnckwwy3td_T2Tbr53yXkV1cDk06Fyy2BAowh7HaqdxC07mf_cOm52nns9d6_CLsbnqRnnoRhrvV8pkU434jisdPhWluS1kzpkSE13mGcXgp0ekVuc4UpaVtBf9hOap-V7soD0J9OizSXPjNlf140ljCdFYrRoACGE4ZtJ7oVTjknwNR8FQtFStdY1BWC66lkHrLh_BvsRPffRnXiKfX62TbMeQjaeQQ_02Gork5w3XBujsEmZFk7-f5nqHHqTb2MzbT8");'>
+                    </div>
+                    <span
+                        class="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-white dark:border-[#111722]"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-baseline mb-0.5">
+                        <p class="text-sm font-medium truncate">Emily Chen</p>
+                        <p class="text-[11px] text-slate-400 dark:text-slate-500">3h</p>
+                    </div>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 truncate">Thanks for the update!</p>
+                </div>
+            </div>
+            <!-- Inactive Item 3 -->
+            <div
+                class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer transition-colors">
+                <div class="relative shrink-0">
+                    <div class="bg-center bg-no-repeat bg-cover rounded-full h-10 w-10 flex items-center justify-center bg-indigo-500 text-white font-bold"
+                        data-alt="Initials DT for Design Team">DT</div>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-baseline mb-0.5">
+                        <p class="text-sm font-medium truncate">Design Team</p>
+                        <p class="text-[11px] text-slate-400 dark:text-slate-500">1d</p>
+                    </div>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 truncate"><span
+                            class="text-primary">@John</span> uploaded a new file.</p>
+                </div>
+            </div>
+        </div>
+        <!-- User Profile (Bottom Sidebar) -->
+        <div class="p-4 border-t border-gray-200 dark:border-white/10">
+            <div class="flex items-center gap-3">
+                <div class="bg-center bg-no-repeat bg-cover rounded-full h-9 w-9" data-alt="Self portrait of the user"
+                    style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCiVMNoNVHke1YV2VwVOD-mfw--ATXyUr-IENFCWgs85JSmVhAxZr5CoalxmZlNiOoRe0ggXSQ-N-trh8lttmb5IJ_3-EOCzCub-xTw_xHjpeN28NsCTQuP0ugwhj0NkNDTEYo-5ryLQtw6wmY1sxsfiMDkua6fR_Klq1qcwbKw9LDRNnpiks80lbdx_eL60zgTUUozmjzFBUPBNNNFt0Fx8aSYTjndEW4D3qrBtq8piKu1JrvzROZPXr2sPb9mdDgiovh2sEzMGgE");'>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold truncate">My Profile</p>
+                    <p class="text-xs text-green-500 truncate">Online</p>
+                </div>
+                <button class="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">settings</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+    <!-- Main Chat Area -->
+    <main class="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#101622] relative">
+        <!-- Chat Header -->
+        <header
+            class="h-16 flex items-center justify-between px-6 border-b border-gray-200 dark:border-white/10 shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="md:hidden">
+                    <button class="text-slate-500 dark:text-slate-300">
+                        <span class="material-symbols-outlined">menu</span>
+                    </button>
+                </div>
+                <div class="relative">
+                    <div class="bg-center bg-no-repeat bg-cover rounded-full h-10 w-10"
+                        data-alt="Portrait of Sarah Miller"
+                        style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDuIEzHuIf5LDdWBM9WM0Vdh62LzFTwJnsrRNh8z-JTEvb-ua401xnmltNNJ0g0aL7BbxacPtJm1NR300IM9yHH5hNnNATifCkRYRBHRzGlfSvz-2NEEvIrLddctzKtyYTlGZk57tkDPdtEcBNOAqpKCTCdSBCoA2aog-z87T88lIiTK_IKWYP6X_IzJJiW62Runh4FhZNs6Q_Qk7Y_eahCrefdE2wgX80Fk0bOslNQR95L_TEnK0SsNKctlUSZfvNINNZdizkGwSA");'>
+                    </div>
+                    <span
+                        class="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-white dark:ring-[#101622]"></span>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold leading-tight">Sarah Miller</h2>
+                    <p class="text-xs text-green-500 font-medium">Active now</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-1 sm:gap-2">
+                <button
+                    class="h-9 w-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-[#92a4c9] dark:hover:bg-white/5 transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">search</span>
+                </button>
+                <button
+                    class="h-9 w-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-[#92a4c9] dark:hover:bg-white/5 transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">call</span>
+                </button>
+                <button
+                    class="h-9 w-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-[#92a4c9] dark:hover:bg-white/5 transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">videocam</span>
+                </button>
+                <button
+                    class="h-9 w-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-[#92a4c9] dark:hover:bg-white/5 transition-colors xl:hidden">
+                    <span class="material-symbols-outlined text-[20px]">info</span>
+                </button>
+            </div>
+        </header>
+        <!-- Messages Stream -->
+        <div class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scroll-smooth">
+            <!-- Date Divider -->
+            <div class="flex justify-center my-4">
+                <span
+                    class="text-xs font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-white/5 px-3 py-1 rounded-full">Today</span>
+            </div>
+            <!-- Incoming Message -->
+            <div class="flex items-end gap-3 group">
+                <div class="bg-center bg-no-repeat bg-cover rounded-full h-8 w-8 shrink-0 mb-1"
+                    data-alt="Sarah's Avatar"
+                    style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD6Cldr2VJO0-BK4MZthaGRCv09NqYQcIfEXA95hs76c4Y3DdQPIiOBhihxkRtwxZKh75kTr6_8bfPaR9MT8xjEBxncAIux_X1p2BvDHocKZ2clB8P4jQc6kVuHv5mt2nrQUr5ccUVNpKVUk1B38EKz0QCBq6EM2YKc3z1ETYzpsPWjsRdXq0vCQvxuoxCKY6v8vVouIhhurdsrs3yQrPdoY4Y_txMFuwd2a-FEBPut81_TV8LN9OpRkpbC4Phu7S-80hTqTNfZfXY");'>
+                </div>
+                <div class="flex flex-col gap-1 max-w-[80%] md:max-w-[60%]">
+                    <div
+                        class="rounded-2xl rounded-bl-none px-4 py-3 bg-slate-100 dark:bg-[#232f48] text-slate-800 dark:text-white shadow-sm">
+                        <p class="text-sm leading-relaxed">Hey! Did you get a chance to look at the new design files I
+                            sent over earlier?</p>
+                    </div>
+                    <span
+                        class="text-[11px] text-slate-400 dark:text-slate-500 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">09:41
+                        AM</span>
+                </div>
+            </div>
+            <!-- Incoming Message (Link/Attachment) -->
+            <div class="flex items-end gap-3 group mt-2">
+                <div class="h-8 w-8 shrink-0 mb-1"></div> <!-- Spacer for alignment -->
+                <div class="flex flex-col gap-1 max-w-[80%] md:max-w-[60%]">
+                    <div
+                        class="rounded-2xl rounded-bl-none px-4 py-3 bg-slate-100 dark:bg-[#232f48] text-slate-800 dark:text-white shadow-sm flex items-center gap-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-[#2e3b56] transition-colors">
+                        <div
+                            class="h-10 w-10 bg-red-100 dark:bg-red-500/20 rounded-lg flex items-center justify-center text-red-500 shrink-0">
+                            <span class="material-symbols-outlined">picture_as_pdf</span>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold truncate">Project_Guidelines_v2.pdf</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">2.4 MB</p>
+                        </div>
+                        <span class="material-symbols-outlined text-slate-400">download</span>
+                    </div>
+                    <span
+                        class="text-[11px] text-slate-400 dark:text-slate-500 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">09:42
+                        AM</span>
+                </div>
+            </div>
+            <!-- Outgoing Message -->
+            <div class="flex items-end gap-3 justify-end group">
+                <div class="flex flex-col gap-1 items-end max-w-[80%] md:max-w-[60%]">
+                    <div class="rounded-2xl rounded-br-none px-4 py-3 bg-primary text-white shadow-sm">
+                        <p class="text-sm leading-relaxed">Yes, I'm reviewing them right now. The color palette looks
+                            amazing! 🔥</p>
+                    </div>
+                    <div class="flex items-center gap-1 mr-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span class="text-[11px] text-slate-400 dark:text-slate-500">09:45 AM</span>
+                        <span class="material-symbols-outlined text-[14px] text-primary">done_all</span>
+                    </div>
+                </div>
+                <!-- Self Avatar (Optional, often omitted in modern chats but included for symmetry if desired) -->
+                <!-- <div class="bg-center bg-no-repeat bg-cover rounded-full h-8 w-8 shrink-0 mb-1" style='background-image: url("https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80");'></div> -->
+            </div>
+            <!-- Outgoing Message (Short) -->
+            <div class="flex items-end gap-3 justify-end group -mt-4">
+                <div class="flex flex-col gap-1 items-end max-w-[80%] md:max-w-[60%]">
+                    <div class="rounded-2xl rounded-tr-sm rounded-br-none px-4 py-3 bg-primary text-white shadow-sm">
+                        <p class="text-sm leading-relaxed">I have one quick question about the mobile view though.</p>
+                    </div>
+                    <div class="flex items-center gap-1 mr-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span class="text-[11px] text-slate-400 dark:text-slate-500">09:46 AM</span>
+                        <span class="material-symbols-outlined text-[14px] text-primary">done_all</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Incoming Typing Indicator -->
+            <div class="flex items-end gap-3">
+                <div class="bg-center bg-no-repeat bg-cover rounded-full h-8 w-8 shrink-0 mb-1"
+                    data-alt="Sarah's Avatar"
+                    style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDsy0Cu1TDJPkT1lQyfnvU2PeTo70XpNOJbwer1VmO4_lR0kIlv0cKpMmjMbEwOjmty0JPFpFB-V-WuC3qJLtBSTG4zdaSH-J27bzQjU-QNIv65CDXQW_zg-AS4Ju90Lk-R3D1Hg9GLYk9UQ7BAE9pUkgV3jdjLAcV1dn7KEw_j1TGUnP1vhzpM-zA7WCaE9nrTvQlLAdQ6k5Kssu7FRlmBu2oWNBtcuubLr6m4WZIGzWukPC24JsTMTj5Ke1SpYRpklUG2pJN37ZU");'>
+                </div>
+                <div
+                    class="rounded-2xl rounded-bl-none px-4 py-3 bg-slate-100 dark:bg-[#232f48] shadow-sm flex items-center gap-1 h-11">
+                    <span class="block w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
+                    <span class="block w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"
+                        style="animation-delay: 0.1s"></span>
+                    <span class="block w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"
+                        style="animation-delay: 0.2s"></span>
+                </div>
+            </div>
+        </div>
+        <!-- Input Area -->
+        <div class="p-4 md:p-6 bg-white dark:bg-[#101622] border-t border-gray-200 dark:border-white/10 shrink-0">
+            <div
+                class="flex items-end gap-2 bg-slate-50 dark:bg-[#161b26] p-2 rounded-xl border border-transparent focus-within:border-primary/50 transition-colors">
+                <button
+                    class="h-10 w-10 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-white dark:hover:bg-[#232f48] transition-colors shrink-0">
+                    <span class="material-symbols-outlined text-[22px]">add_circle</span>
+                </button>
+                <div class="flex-1 py-2">
+                    <textarea
+                        class="w-full bg-transparent border-none text-sm text-slate-800 dark:text-white placeholder-slate-400 focus:ring-0 p-0 resize-none max-h-32"
+                        placeholder="Type a message..." rows="1"></textarea>
+                </div>
+                <button
+                    class="h-10 w-10 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-white dark:hover:bg-[#232f48] transition-colors shrink-0">
+                    <span class="material-symbols-outlined text-[22px] icon-filled">sentiment_satisfied</span>
+                </button>
+                <button
+                    class="h-10 w-10 flex items-center justify-center rounded-lg bg-primary text-white shadow-md hover:bg-blue-600 transition-colors shrink-0">
+                    <span class="material-symbols-outlined text-[20px] icon-filled">send</span>
+                </button>
+            </div>
+        </div>
+    </main>
+    <!-- Right Details Sidebar -->
+    <aside
+        class="w-80 flex-shrink-0 border-l border-gray-200 dark:border-white/10 bg-white dark:bg-[#111722] overflow-y-auto hidden xl:block">
+        <div class="p-6 flex flex-col items-center border-b border-gray-200 dark:border-white/10">
+            <div class="relative mb-4">
+                <div class="bg-center bg-no-repeat bg-cover rounded-full h-24 w-24"
+                    data-alt="Large portrait of Sarah Miller"
+                    style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBdCdm10xeKbbdXOxU3q-COFkcR2nRj7DYe3e71WfaK2tEQolgfczvg2XPsSVGSVP7kJRqJuutp7Ve5kK1pUZ-h4sw6h5_9raIQkJiI7IkQJyeZfQJ4lKEYLxXIVAdKhteTLRagq-E2NaRCPLBtnZJlA8EZtmM0_AKVsvV7pOKvjbsLGpDLskrGUS2oqVXcIM7JfM-P0PNcQAmNktKPm-0DGL-JrTGmXJFokeFVqquPcdG0jTpkFhLAeIsg_CB-8kLEsUjbtDH0Dgg");'>
+                </div>
+                <div
+                    class="absolute bottom-1 right-1 h-5 w-5 rounded-full bg-green-500 border-4 border-white dark:border-[#111722]">
+                </div>
+            </div>
+            <h2 class="text-xl font-bold mb-1">Sarah Miller</h2>
+            <p class="text-sm text-slate-500 dark:text-[#92a4c9] mb-4">Product Designer</p>
+            <div class="flex gap-3 w-full">
+                <button
+                    class="flex-1 flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-slate-50 dark:bg-[#232f48] hover:bg-slate-100 dark:hover:bg-[#2d3b55] transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">person</span>
+                    <span class="text-xs font-medium">Profile</span>
+                </button>
+                <button
+                    class="flex-1 flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-slate-50 dark:bg-[#232f48] hover:bg-slate-100 dark:hover:bg-[#2d3b55] transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">notifications_off</span>
+                    <span class="text-xs font-medium">Mute</span>
+                </button>
+                <button
+                    class="flex-1 flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-slate-50 dark:bg-[#232f48] hover:bg-slate-100 dark:hover:bg-[#2d3b55] transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">search</span>
+                    <span class="text-xs font-medium">Search</span>
+                </button>
+            </div>
+        </div>
+        <div class="p-4">
+            <div class="flex items-center justify-between mb-3 px-2">
+                <h3 class="text-sm font-bold">Shared Media</h3>
+                <button class="text-xs text-primary font-medium hover:underline">View All</button>
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+                <div class="aspect-square rounded-lg bg-cover bg-center cursor-pointer hover:opacity-80 transition-opacity"
+                    data-alt="Abstract gradient design"
+                    style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAMrPBDmKxs3cosBWKLJlnw9fqxRzZOJp1FfvrIVGkuamec4D34W6l50oewGCdLBLEVyWnrYnQlHI_npeF4REaj_GvrAiCIiarsHQeuEx5qdPLzTqvnehrKywy6YxxGDC2wYgb5TuzZUS37l9rCPnE9E2rLYG-5nL_2I99X1SsyNy2QS8YPPqbRpBLIg3lg40phs_j19peyFUXAz7tD6zW6Ywd48_enO_Gz7XjhN18UNaCJP6IJqY4ZQdWiFoiEG9z6_3hCujW4dUw")'>
+                </div>
+                <div class="aspect-square rounded-lg bg-cover bg-center cursor-pointer hover:opacity-80 transition-opacity"
+                    data-alt="Minimalist architectural detail"
+                    style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCXrqlPZ_4K2x2Ea13hQwgJ0xb_GfjUn3RuE4CPPIqcXQeSiyJ8GTFQIJXoFMDOzuORQX8lswMWmuSmBftwxlKOFDebsBeaugG1a3y_BqpuvCn2Sb93EbqYBjm9CRJCzKFsG-p2pGFQ1vbVa5FotGPCL630bDNw8wFvB2IeVHHBX79NmA_i0IRS5Au5TrG6jSGNdey_JTNF4BLgq0eXFud4LAz2r7SU2A_nJZPhTqqMW6obmtLFcCj8EMyINE4l0df92QCVGHKaeew")'>
+                </div>
+                <div class="aspect-square rounded-lg bg-cover bg-center cursor-pointer hover:opacity-80 transition-opacity"
+                    data-alt="Modern workspace setup"
+                    style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDKrRVezsciHXFv-b_iwyHq-ezbstfZtGv79P1a9-jtow4UT_TbcjtvPv3BdWFpOoBpGqlns0n7YI5HSxzHO3c7SOTlGe5Gpv_HlMQe0NYs0dXJt10er7Rw74suR7rMMb8pecLEe18myT3c5POwQ5xTm6ndxM4OZ982mKwykyJs_38uCz4DZeduS3fmus1Nxywdj1wz2qHojg7W2ctri12DpXsbl5j3HPUNs_kBeyom4-tVwmC-WYYAR3PDbXEgOYUcNxyDj7bNBBY")'>
+                </div>
+                <div class="aspect-square rounded-lg bg-cover bg-center cursor-pointer hover:opacity-80 transition-opacity relative"
+                    data-alt="Blurred office background"
+                    style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAVQSXwBDWwtBMPMN-K3FlI99-oq_E1qoPCGIj0Weh2CXkRqtFjxEoAY4l-2Czx_1oWcCEsG6EBL5cG8gePWqs12Y_7AYA3lDlX95DNkAwQYKZVwJiO0IKACz7MP8longtxZw_c8RPpJMSW68rtJlu758atw1KvDyOzKII80ZXhJwmlBo-_LqH5MFfZLQnwzZ5iXl6i3vmOPc68z5mdn5xZgd98zvS14iB-iooZbv_yt1lrDkw59cgAGX88TOcKYCyHcBmDyqB8L24")'>
+                    <div class="absolute inset-0 bg-black/40 flex items-center justify-center rounded-lg">
+                        <span class="text-white text-xs font-bold">+12</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="p-4 border-t border-gray-200 dark:border-white/10">
+            <h3 class="text-sm font-bold mb-3 px-2">Settings</h3>
+            <div class="flex flex-col gap-1">
+                <button
+                    class="flex items-center justify-between w-full p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-[#232f48] group transition-colors">
+                    <div class="flex items-center gap-3">
+                        <span
+                            class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors">palette</span>
+                        <span class="text-sm font-medium">Theme &amp; Color</span>
+                    </div>
+                    <span class="material-symbols-outlined text-slate-400 text-[16px]">arrow_forward_ios</span>
+                </button>
+                <button
+                    class="flex items-center justify-between w-full p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-[#232f48] group transition-colors">
+                    <div class="flex items-center gap-3">
+                        <span
+                            class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors">lock</span>
+                        <span class="text-sm font-medium">Privacy &amp; Support</span>
+                    </div>
+                    <span class="material-symbols-outlined text-slate-400 text-[16px]">arrow_forward_ios</span>
+                </button>
+                <button
+                    class="flex items-center justify-between w-full p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 group transition-colors mt-2">
+                    <div class="flex items-center gap-3">
+                        <span
+                            class="material-symbols-outlined text-red-400 group-hover:text-red-500 transition-colors">block</span>
+                        <span class="text-sm font-medium text-red-400 group-hover:text-red-500">Block Contact</span>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </aside>
+</body>
+
+</html>

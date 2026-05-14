@@ -1,10 +1,10 @@
-import mongoose, {Schema} from "mongoose"
+import mongoose, { Schema } from "mongoose"
 
 const messageSchema = new Schema(
     {
         groupId: {
             type: Schema.Types.ObjectId,
-            ref: "Groups",
+            ref: "Group",
             // required: true,
         },
         replyToMessageId: {
@@ -22,10 +22,12 @@ const messageSchema = new Schema(
         },
         content: {
             type: String,
+            required: true,
         },
         senderId: {
             type: Schema.Types.ObjectId,
             ref: "User",
+            required: true,
         },
         sentAt: {
             type: Date,
@@ -35,6 +37,28 @@ const messageSchema = new Schema(
     {
         timestamps: true,
     }
-)
+);
+
+messageSchema.pre("save", function () {
+    if (this.chatType === "direct") {
+        this.groupId = undefined;
+    } else if (this.chatType === "group") {
+        this.directChat = undefined;
+    }
+});
+
+messageSchema.index({
+    directChat: 1,
+    sentAt: 1
+});
+
+messageSchema.index({
+    groupId: 1,
+    sentAt: 1
+});
+
+messageSchema.index({
+    senderId: 1
+});
 
 export const Message = mongoose.model('Message', messageSchema)

@@ -23,6 +23,11 @@ lerna-debug.log*
 *.sln
 *.sw?
 
+# Plans
+plan temp.txt
+implementation_plan.md
+dexie_guide.md
+
 
 # Enviornments
 .env

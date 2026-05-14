@@ -1,0 +1,1 @@
+export {default as chatPage} from './pages/ChatPage';

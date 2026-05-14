@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Slate Obsidian - Active Chat</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-variant": "#2A3642",
+                        "on-error": "#ffffff",
+                        "surface-container-lowest": "#121921",
+                        "tertiary-fixed-dim": "#80deea",
+                        "on-tertiary-fixed-variant": "#004f56",
+                        "primary-fixed-dim": "#92d0e2",
+                        "surface-tint": "#1e7e9a",
+                        "tertiary-fixed": "#b2ebf2",
+                        "tertiary": "#00796B",
+                        "surface-container-high": "#3A4753",
+                        "secondary": "#8A9BA8",
+                        "surface-container-highest": "#4A5664",
+                        "on-tertiary-container": "#e0f2f1",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed-dim": "#b7c8db",
+                        "inverse-primary": "#3eb4d4",
+                        "on-tertiary-fixed": "#002022",
+                        "surface-bright": "#2A3642",
+                        "on-primary-fixed-variant": "#004d60",
+                        "primary": "#1e7e9a",
+                        "primary-fixed": "#c7e7f0",
+                        "error": "#C62828",
+                        "on-secondary-fixed": "#111c2b",
+                        "surface-container": "#2A3642",
+                        "tertiary-container": "#004d40",
+                        "on-background": "#E0E0E0",
+                        "secondary-container": "#3A4753",
+                        "on-surface-variant": "#8A9BA8",
+                        "surface": "#1A242F",
+                        "inverse-surface": "#E0E0E0",
+                        "primary-container": "#1e7e9a",
+                        "error-container": "#4a0b0b",
+                        "surface-dim": "#151d26",
+                        "on-surface": "#E0E0E0",
+                        "on-primary-fixed": "#001f28",
+                        "secondary-fixed": "#d3e4f6",
+                        "on-secondary-fixed-variant": "#3f4858",
+                        "inverse-on-surface": "#1A242F",
+                        "on-primary": "#ffffff",
+                        "outline-variant": "#3A4753",
+                        "on-primary-container": "#ffffff",
+                        "on-secondary-container": "#E0E0E0",
+                        "surface-container-low": "#1A242F",
+                        "on-secondary": "#1A242F",
+                        "outline": "#4A5664",
+                        "background": "#1A242F",
+                        "on-error-container": "#ffdad6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Plus Jakarta Sans"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .chat-bubble-in {
+            border-bottom-left-radius: 0 !important;
+        }
+
+        .chat-bubble-out {
+            border-bottom-right-radius: 0 !important;
+        }
+
+        .convex-gradient {
+            background: radial-gradient(circle at center, #26a0c2 0%, #1e7e9a 100%);
+        }
+    </style>
+</head>
+
+<body class="bg-surface-container-low text-on-surface flex h-screen overflow-hidden">
+    <!-- SideNavBar Component -->
+    <aside
+        class="bg-slate-900 dark:bg-[#1A242F] h-screen w-72 flex-shrink-0 bg-[#1A242F] border-r border-white/5 flex flex-col h-full py-6 px-4">
+        <!-- Header -->
+        <div class="flex items-center gap-3 mb-8 px-2 relative">
+            <div class="relative">
+                <img alt="User profile" class="w-10 h-10 rounded-full border-2 border-[#1A242F]"
+                    data-alt="Close-up professional portrait of a man with a clean beard against a dark architectural background"
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDi-t7Q44wN0IrxuLtmFINgBKdfjDqrKij8NNBe7EKV1jNkBzNKJH9wciAxwUaNrgMLMEfhz7uHSVwFQlRBwURT6Mu5SkXSqOnBpVxenWXn7wxLRsowqCI6s0toDjiKuRhKda-0j1MWdi2Y4SePCVVdT-llvM8dfMxBJqgISf_GslgGXZ4lqkj664lXY1kP37xGPIA1Gp4rmdNnU_Z1W9nDcrAEaNU85bG_1AG8uzSsGy85NK4lsXWhi1ygmWl27rboMvbeyyyxu44" />
+                <div class="absolute bottom-0 right-0 w-3 h-3 bg-[#66BB6A] rounded-full border-2 border-[#1A242F]">
+                </div>
+            </div>
+            <div class="flex-1">
+                <h2 class="text-lg font-bold text-[#1e7e9a] tracking-tight">Slate Obsidian</h2>
+                <p class="text-[11px] text-[#8A9BA8]">Architectural Minimalist</p>
+            </div>
+            <button class="text-[#8A9BA8] hover:text-white transition-colors">
+                <span class="material-symbols-outlined">more_vert</span>
+            </button>
+            <!-- Context Menu (Dropdown) -->
+            <div
+                class="absolute top-12 left-0 w-56 bg-surface-container-high rounded-xl shadow-xl z-50 py-2 border border-white/10 backdrop-blur-md">
+                <div class="px-4 py-2 text-[11px] text-secondary font-bold uppercase tracking-wider">Menu</div>
+                <button
+                    class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface hover:bg-[#3A4753] transition-all">
+                    <span class="material-symbols-outlined text-sm">group_add</span> New Group
+                </button>
+                <button
+                    class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface hover:bg-[#3A4753] transition-all">
+                    <span class="material-symbols-outlined text-sm">settings</span> Settings
+                </button>
+                <button
+                    class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface hover:bg-[#3A4753] transition-all">
+                    <span class="material-symbols-outlined text-sm">archive</span> Archive All
+                </button>
+                <div class="h-px bg-white/5 my-1"></div>
+                <button
+                    class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface hover:bg-[#3A4753] transition-all">
+                    <span class="material-symbols-outlined text-sm">help</span> Help
+                </button>
+            </div>
+        </div>
+        <button
+            class="w-full py-3 mb-6 flex items-center justify-center gap-2 rounded-xl convex-gradient text-white font-bold text-sm shadow-md transition-all active:opacity-80 active:scale-95">
+            <span class="material-symbols-outlined">chat</span>
+            New Chat
+        </button>
+        <!-- Navigation Tabs -->
+        <nav class="flex-1 space-y-1">
+            <a class="flex items-center gap-3 px-3 py-3 rounded-lg text-white bg-[#1e7e9a]/10 font-bold border-l-2 border-[#1e7e9a]"
+                href="#">
+                <span class="material-symbols-outlined">chat</span>
+                <span class="text-sm">Direct Messages</span>
+            </a>
+            <a class="flex items-center gap-3 px-3 py-3 rounded-lg text-[#8A9BA8] hover:text-white transition-colors hover:bg-[#3A4753]"
+                href="#">
+                <span class="material-symbols-outlined">group</span>
+                <span class="text-sm">Channels</span>
+            </a>
+            <a class="flex items-center gap-3 px-3 py-3 rounded-lg text-[#8A9BA8] hover:text-white transition-colors hover:bg-[#3A4753]"
+                href="#">
+                <span class="material-symbols-outlined">archive</span>
+                <span class="text-sm">Archive</span>
+            </a>
+            <a class="flex items-center gap-3 px-3 py-3 rounded-lg text-[#8A9BA8] hover:text-white transition-colors hover:bg-[#3A4753]"
+                href="#">
+                <span class="material-symbols-outlined">push_pin</span>
+                <span class="text-sm">Pinned</span>
+            </a>
+            <a class="flex items-center gap-3 px-3 py-3 rounded-lg text-[#8A9BA8] hover:text-white transition-colors hover:bg-[#3A4753]"
+                href="#">
+                <span class="material-symbols-outlined">settings</span>
+                <span class="text-sm">Settings</span>
+            </a>
+        </nav>
+        <!-- Footer -->
+        <div class="mt-auto border-t border-white/5 pt-4">
+            <button
+                class="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-error hover:bg-error/10 transition-colors">
+                <span class="material-symbols-outlined">logout</span>
+                <span class="text-sm font-medium">Logout</span>
+            </button>
+        </div>
+    </aside>
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col min-w-0">
+        <!-- TopNavBar -->
+        <header
+            class="w-full h-16 sticky top-0 z-40 bg-slate-800/80 dark:bg-[#1A242F]/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-8 w-full">
+            <div class="flex items-center gap-4">
+                <div class="flex -space-x-2">
+                    <img class="w-8 h-8 rounded-full border-2 border-surface"
+                        data-alt="Portrait of a young professional woman with a warm smile and natural lighting"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuCar3EBtwwiaOHwL6y8saV92f1RsaaX-4CxuFEe1pV4hPJkZdTHvaUaKjHpRsLVbK-141x-WxFPpZyH4LeFockh8ZKZCuF7HBbXEFINbvr8BsBCXq_6S6U1AYoyBcuG3bFDKkH97NvFVdrBLt97OlZT8U_uhL_wdz-x94zLMc6fvwA5JLTj3Wfk9Wc0triD0cfhDOkUv2trNT3PlSItl8W_zAlCFkO_87mUJ1rFKrjusxywScerQVG9vUhpCrdrkeE1nfvBKmWoDlQ" />
+                    <img class="w-8 h-8 rounded-full border-2 border-surface"
+                        data-alt="Portrait of a smiling man with glasses in a professional studio setting"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuBroUrxByC9Gx6pqQBrBr2xoSGc1iz0tcvaYPUPRLNqBF3XmuZM1LvTV-IVe9Y1PD5sPocz7CXmYUtROgRme9wIQxVPfPyUe46zs0SeIp8CvT9YUfLJ0oO_wfP-CEU24ecL98NZCJ0fTrW_hJUcLBF8O-TUjRgWLhkbHMutyy_ATi4OaqHt2EjIsYkGf77jgzcTMlrxyFB9mwCvOxHB6yGBJrru2KijjLFySxpdZrZRqzqMRpReFSSPUhGxhDN1FZeUi9X9jkA5y4M" />
+                </div>
+                <div>
+                    <h1 class="text-on-surface font-bold text-[16px]">Architecture Guild</h1>
+                    <p class="text-[10px] text-secondary">3 online • Last update 2m ago</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-6">
+                <nav class="hidden md:flex items-center gap-6">
+                    <a class="text-[#1e7e9a] font-bold border-b-2 border-[#1e7e9a] pb-1 text-sm" href="#">Shared
+                        Files</a>
+                    <a class="text-[#8A9BA8] hover:text-white transition-colors text-sm" href="#">Gallery</a>
+                    <a class="text-[#8A9BA8] hover:text-white transition-colors text-sm" href="#">Search</a>
+                </nav>
+                <div class="flex items-center gap-2">
+                    <button class="p-2 text-[#8A9BA8] hover:text-white transition-colors opacity-90 hover:opacity-100">
+                        <span class="material-symbols-outlined">info</span>
+                    </button>
+                    <button class="p-2 text-[#8A9BA8] hover:text-white transition-colors opacity-90 hover:opacity-100">
+                        <span class="material-symbols-outlined">more_vert</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+        <!-- Chat Canvas -->
+        <section class="flex-1 overflow-y-auto p-6 space-y-6 bg-surface-container-low custom-scrollbar">
+            <!-- Timestamp Divider -->
+            <div class="flex justify-center">
+                <span
+                    class="px-3 py-1 bg-surface-container rounded-full text-[10px] text-secondary uppercase tracking-widest font-bold">Today</span>
+            </div>
+            <!-- Received Message -->
+            <div class="flex items-end gap-3 max-w-[80%]">
+                <img class="w-8 h-8 rounded-full"
+                    data-alt="Close-up of a woman's face with bright eyes looking at camera"
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDWpsDSLERmZIf97r7dE3N5d3ixMxtpd8HLz29l4OhMaHh_1qID8Ot3_O3uPGFIlBbUTwl-JSFrc_iexDquzQYX39Q2NPgk8_JbQjULhP1NJvVAGdFJ9qweTTwqjvyVERvfp4a0f7xiJprologz1Uz0R6cRqFSyBvpqXQ8Nb-3Wcsud1cdxJbFwmixxIfeX1-Lfp8CEca1tDxUkPB4-hDgsU__4b2mDK0g4p6vktcCrgpcIEwEj5wZfV8yhLYxo5MjoNGfWUm0lnls" />
+                <div class="flex flex-col gap-1">
+                    <span class="text-[10px] text-secondary ml-1">Elena Vance • 10:24 AM</span>
+                    <div class="bg-surface-variant p-4 rounded-xl chat-bubble-in shadow-sm border border-white/5">
+                        <p class="text-sm leading-relaxed text-on-surface">The brutalist concrete textures for the new
+                            museum wing just arrived. Should we review the shadow casting on the north facade?</p>
+                    </div>
+                </div>
+            </div>
+            <!-- Sent Message -->
+            <div class="flex items-end gap-3 max-w-[80%] ml-auto flex-row-reverse">
+                <div
+                    class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-[10px] font-bold text-white">
+                    ME</div>
+                <div class="flex flex-col items-end gap-1">
+                    <span class="text-[10px] text-secondary mr-1">10:26 AM</span>
+                    <div class="bg-primary p-4 rounded-xl chat-bubble-out shadow-sm text-white">
+                        <p class="text-sm leading-relaxed">Absolutely. I've been looking at the Obsidian slab samples as
+                            well. The low reflectivity matches our creative north star perfectly.</p>
+                    </div>
+                </div>
+            </div>
+            <!-- Image/Artifact Message -->
+            <div class="flex items-end gap-3 max-w-[80%]">
+                <img class="w-8 h-8 rounded-full" data-alt="Portrait of a young man smiling with a blurred background"
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6UViIrOh5I4LLnuntormJ2CJNrzNOL8eH0WK1Vjv3PEtWAnAC27RHN5WT1mHMqVAYSY2vkhTYErTokVIly3gtQs3DkxQ7j3dm57cPjRzhGgNONAdZKA9pPnH8HwJPd60JHJ12Vw-5b8qYnspxAog1aepBkfI3kmzPVW_UmZsK-9h66HIbX4ycDXKskZFfsaz4C3u2f3Fm-YOQqrK7CT9gKK3qYkvCTHq6jZr_92Q0H256jBoNFyVOXmle8JFhlbz3GtBKvyGIpRk" />
+                <div class="flex flex-col gap-1">
+                    <span class="text-[10px] text-secondary ml-1">Marcus Thorne • 10:30 AM</span>
+                    <div
+                        class="bg-surface-variant p-2 rounded-xl chat-bubble-in shadow-sm border border-white/5 space-y-2">
+                        <img class="rounded-lg w-full aspect-video object-cover"
+                            data-alt="Modern glass and steel skyscraper reflecting the blue sky at a sharp angle"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCOHi0juPn_lG_FJsY8wJHo5uJeEoWBMNUa3h8GxBTxP_usKGKBd-s1hIxFR1F_BOdmtKac6_HZxOZNR8anGTYCHgu0O6cjNh4hFDeGx2mW98GO8yegsCVmtpPzlbLQUs4h4Z4KXmuPvgsouzkQUCQhSAELAJLajA7LcNBzvoVBqeyqoH2_HhDese70fEMAZvOHB7zwLsW-oHWXaXsFmKqNRx5J6XcvfFlEg8pM1MMhth7TkZ1FPiKCyi2SRi2ZnyWqR3oPujCAzcw" />
+                        <div class="p-2">
+                            <p class="text-sm text-on-surface">This is the render for the penthouse terrace. Thoughts?
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!-- Message Composer Tray -->
+        <footer class="p-6 bg-surface-container-low border-t border-white/5">
+            <div
+                class="max-w-5xl mx-auto flex items-center gap-4 bg-surface-variant rounded-xl p-2 px-4 shadow-md border border-white/5">
+                <button class="p-2 text-secondary hover:text-primary transition-colors">
+                    <span class="material-symbols-outlined">add_circle</span>
+                </button>
+                <input
+                    class="flex-1 bg-transparent border-none focus:ring-0 text-sm text-on-surface py-2 placeholder-secondary"
+                    placeholder="Design a response..." type="text" />
+                <div class="flex items-center gap-1">
+                    <button class="p-2 text-secondary hover:text-on-surface">
+                        <span class="material-symbols-outlined">mood</span>
+                    </button>
+                    <button
+                        class="p-2 w-10 h-10 flex items-center justify-center rounded-lg bg-primary text-white shadow-md active:scale-95 transition-all">
+                        <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">send</span>
+                    </button>
+                </div>
+            </div>
+        </footer>
+    </main>
+    <!-- Side Contacts / Threads List (Desktop Only) -->
+    <aside class="hidden lg:flex w-80 bg-surface-container border-l border-white/5 flex-col overflow-hidden">
+        <div class="p-6 border-b border-white/5">
+            <div class="relative">
+                <span class="absolute inset-y-0 left-3 flex items-center text-secondary">
+                    <span class="material-symbols-outlined text-sm">search</span>
+                </span>
+                <input
+                    class="w-full bg-surface-container-low border-none rounded-lg pl-10 text-xs text-on-surface py-2.5 placeholder-secondary"
+                    placeholder="Find thread..." type="text" />
+            </div>
+        </div>
+        <div class="flex-1 overflow-y-auto">
+            <!-- Active Thread -->
+            <div class="px-4 py-3 bg-[#1e7e9a]/10 border-r-4 border-[#1e7e9a] flex items-center gap-3">
+                <div class="relative">
+                    <div
+                        class="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center text-primary font-bold">
+                        AG</div>
+                    <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-[#66BB6A] rounded-full border-2 border-surface">
+                    </div>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-center mb-0.5">
+                        <span class="font-bold text-sm truncate">Architecture Guild</span>
+                        <span class="text-[10px] text-primary">10:30 AM</span>
+                    </div>
+                    <p class="text-xs text-secondary truncate">Marcus: This is the render for the...</p>
+                </div>
+            </div>
+            <!-- Inactive Thread -->
+            <div
+                class="px-4 py-3 hover:bg-surface-container-high transition-colors flex items-center gap-3 cursor-pointer">
+                <div class="relative">
+                    <img class="w-12 h-12 rounded-full"
+                        data-alt="Young woman with curly hair and minimalist jewelry in soft morning light"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtHNC3ZIFE29NqBCI95d5BVJB7rFCaUdbBdy3VvJA4seDB6c0uOi8a5rlr2JUwqfJZOUUeTA_1rXRByW-HZo2IRjVKwU2ZxVs1mOox0F_eIFJ6xfaFNf3ezYGl4yzKBOKgMnzjsihMDn2dlRssKfl5V0I7_bGCCHdUeoXC0TvhPUUKpJ9L96ocLYFdhaBhg079UK1b2KGyo8yYk5Ir_FEbwAn2ER-C7Jv_433doyc3DyiiY0ze6reVO8yrR6L3aPJ3YLaQ5kgxA0Y" />
+                    <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-secondary rounded-full border-2 border-surface">
+                    </div>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-center mb-0.5">
+                        <span class="font-bold text-sm truncate">Julianna Smith</span>
+                        <span class="text-[10px] text-secondary">Yesterday</span>
+                    </div>
+                    <p class="text-xs text-secondary truncate">The material board looks great. Ready to sign off.</p>
+                </div>
+            </div>
+            <!-- Inactive Thread -->
+            <div
+                class="px-4 py-3 hover:bg-surface-container-high transition-colors flex items-center gap-3 cursor-pointer">
+                <div
+                    class="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center text-secondary font-bold">
+                    CD</div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-center mb-0.5">
+                        <span class="font-bold text-sm truncate">City Design Lab</span>
+                        <span class="text-[10px] text-secondary">Wed</span>
+                    </div>
+                    <p class="text-xs text-secondary truncate">Meeting moved to 3 PM via Obsidian Link.</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+</body>
+
+</html>

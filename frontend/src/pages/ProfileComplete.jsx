@@ -1,9 +1,9 @@
 import React from 'react'
-import { useDispatch, useSelector } from 'react-redux'
-import { logout } from '../store/authSlice';
+import { useDispatch } from 'react-redux'
+
 
 function ProfileComplete() {
-    const logoutUser = useDispatch(logout());
+    const dispatch = useDispatch();
 
     const uploadFile = () => {
         document.getElementById('displayAvatar').click();
