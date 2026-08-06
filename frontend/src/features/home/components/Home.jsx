@@ -1,7 +1,4 @@
-import React, { useEffect, useState } from 'react'
-import RecentMessageComponent from '../../chat/components/RecentMessageComponent';
-import SearchIcon from "../../../assets/icons/search.png";
-import { recentUserMessages } from '../../../data/users';
+import React from 'react'
 
 function Home() {
 

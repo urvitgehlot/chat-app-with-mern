@@ -114,7 +114,69 @@ const getUserAllMessages = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, { directChat: directChat, messages: messages }, "Messages fetched successfully"));
 });
 
+const getChatMessagesByPage = asyncHandler(async (req, res) => {
+    const { chatId, chatType, page = 1, limit = 20 } = req.query;
+
+    if (!chatId || !chatType || (chatType !== "direct" && chatType !== "group")) {
+        throw new ApiError(400, "Chat Id and Chat Type are required");
+    }
+    var directChat;
+
+    if (chatType === "direct") {
+        directChat = await DirectChat.findById(chatId)
+            .populate("participants", "_id displayName username avatarUrl lastActiveAt");
+    }
+    else {
+
+    }
+
+    const pipeline = [
+        {
+            $match: {
+                directChat: new mongoose.Types.ObjectId(chatId),
+                chatType: "direct",
+            }
+        },
+        {
+            $sort: {
+                sentAt: -1,
+            }
+        },
+        {
+            $facet: {
+                messages: [
+                    {
+                        $skip: (page - 1) * limit,
+                    },
+                    {
+                        $limit: parseInt(limit),
+                    },
+                ],
+                totalCount: [
+                    {
+                        $count: "count"
+                    }
+                ],
+            }
+        }
+    ];
+
+    const messages = await Message.aggregate(pipeline);
+
+    const total = messages[0].totalCount[0]?.count || 0;
+    const totalPages = Math.ceil(total / limit);
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            { messages: messages[0]['messages'], directChat: directChat, total: total, totalPages: totalPages },
+            "Messages fetched successfully"
+        )
+    );
+});
+
 export {
     sendMessage,
-    getUserAllMessages
+    getUserAllMessages,
+    getChatMessagesByPage
 }

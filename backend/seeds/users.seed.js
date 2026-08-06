@@ -15,11 +15,19 @@ const generateUsers = async (count = 10) => {
     }
 
     users.push({
-        username: "urvitgehlot",
-        displayName: "Urvit Gehlot",
-        email: "urvitgehlotug@gmail.com",
-        password: "Urvit@gehlot123",
-        avatarUrl: "https://images.unsplash.com/photo-1654110455429-cf322b40a906"
+        username: "test1",
+        displayName: "Test User 1",
+        email: "test1@gmail.com",
+        password: "usertest",
+        avatarUrl: faker.image.avatar()
+    })
+
+    users.push({
+        username: "test2",
+        displayName: "Test User 2",
+        email: "test2@gmail.com",
+        password: "usertest",
+        avatarUrl: faker.image.avatar()
     })
 
     return await User.create(users);

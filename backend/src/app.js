@@ -1,6 +1,8 @@
 import express from "express"
 import cookieParser from "cookie-parser"
 import cors from "cors"
+import swaggerUI from "swagger-ui-express"
+import swaggerSpecs from "../config/swagger.js" 
 
 const app = express()
 
@@ -16,7 +18,29 @@ app.use(express.json({ limit: "16kb" }))
 app.use(express.urlencoded({ extended: true, limit: "16kb" }))
 app.use(cookieParser())
 
-// testing ping api
+
+app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpecs))
+
+
+/**
+ * @swagger
+ * /api/v1/ping:
+ *   get:
+ *     summary: Health check / ping endpoint
+ *     description: Simple endpoint to test if the backend server is running.
+ *     tags: [Utility]
+ *     responses:
+ *       200:
+ *         description: Server is online and responding.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: pong
+ */
 app.get("/api/v1/ping", (req, res) => {
     res.status(200).json({ message: "pong", });
 })

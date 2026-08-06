@@ -1,8 +1,8 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useChat } from '../useChat'
 
-function DirectMessageProfile() {
-  const { currentChat } = useChat();
+function DirectMessageProfile({ currentChatUser }) {
+  const { users, activeChatKey } = useChat();
 
   return (
     <aside
@@ -11,14 +11,14 @@ function DirectMessageProfile() {
         <div className="relative mb-4">
           <div className="bg-center bg-no-repeat bg-cover rounded-full h-24 w-24"
             data-alt="Large portrait of Sarah Miller"
-            style={{ backgroundImage: `url("${currentChat?.user?.avatarUrl}")` }}>
+            style={{ backgroundImage: `url("${currentChatUser?.avatarUrl}")` }}>
           </div>
           <div
             className="absolute bottom-1 right-1 h-5 w-5 rounded-full bg-green-500 border-4 border-white dark:border-[#111722]">
           </div>
         </div>
-        <h2 className="text-xl font-bold mb-1">{currentChat?.user?.displayName || "Unknown"}</h2>
-        <p className="text-sm text-slate-500 dark:text-[#92a4c9] mb-4">{currentChat?.user?.username || "Unknown"}</p>
+        <h2 className="text-xl font-bold mb-1">{currentChatUser?.displayName || "Unknown"}</h2>
+        <p className="text-sm text-slate-500 dark:text-[#92a4c9] mb-4">{currentChatUser?.username || "Unknown"}</p>
         <div className="flex gap-3 w-full">
           <button
             className="flex-1 flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-slate-50 dark:bg-[#232f48] hover:bg-slate-100 dark:hover:bg-[#2d3b55] transition-colors">

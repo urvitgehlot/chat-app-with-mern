@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
-import { recentUserMessages } from '../../data/users'
 import RecentMessageComponent from '../../features/chat/components/RecentMessageComponent'
 import { useDispatch, useSelector } from 'react-redux'
 import { restoreAuth } from '../../features/chat/chatSlice'
@@ -9,31 +8,24 @@ import { useChat } from '../../features/chat/useChat'
 function HomeLayout() {
     const [recentMessages, setRecentMessages] = useState([]);
 
-    const { getRecentChats, recentChats, recentChatsStatus, recentChatsError } = useChat();
+    const { chats, getRecentChats, } = useChat();
 
     const dispatch = useDispatch();
     const { status, userData } = useSelector((state) => state.auth);
 
     useEffect(() => {
-        if (recentChatsStatus === "not-fetched") {
-            getRecentChats();
-        }
+        getRecentChats();
 
-        // setRecentMessages(recentUserMessages)
+    }, [status, userData])
 
-        if (status && userData) {
-            dispatch(restoreAuth());
-        }
-
-    }, [dispatch, status, userData])
-    if (recentChatsStatus === "pending" || recentChatsStatus === "not-fetched") {
+    if (chats.loading) {
         return (
             <center className='flex items-center justify-center h-screen w-screen'>
                 <span className="loader"></span>
             </center>
         );
     }
-    console.log("recentChats: ", typeof recentChats);
+    // console.log("recentChats: ", typeof recentChats);
     return (
         <div className="flex h-screen w-full">
             {/* <!-- LEFT SIDEBAR --> */}
@@ -43,8 +35,8 @@ function HomeLayout() {
                 <header className="flex items-center justify-between px-5 py-4 shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="bg-center bg-no-repeat bg-cover rounded-full size-10 border border-[#232f48] relative cursor-pointer"
-                            data-alt="User profile avatar showing a smiling person"
-                            style={{ backgroundImage: `url("https://lh3.googleusercontent.com/aida-public/AB6AXuC9_lCAAqDJq-t0U1TtA5BLSXC5GWOBTZINui2wwx87MiIhZgDL51SSQOUvQ7Sdiz8N9LitMPE8NZP-9Jqj9H9BDIPD06Th5Ysahcinx_BYaE9pssTYepf2lUspeEUQC-D2NABcQr2Cn5EbfqN7YqJYc4NjsJxyybqcLwB7LYIxHspB1EWaQ2ARLcdW5Zqfes7FBqqq8ULsGYc3mTi0t8kQYMOP3FP9nE4NlUf_c55O2OD8oFXY4ECedWdWralpjP8-stu2zVGja-s")` }}>
+                            data-alt={`${userData?.displayName}'s profile picture`}
+                            style={{ backgroundImage: `url("${userData.avatarUrl}")` }}>
                             <span
                                 className="absolute bottom-0 right-0 size-3 bg-[#0bda5e] border-2 border-sidebar-dark rounded-full"></span>
                         </div>
@@ -86,9 +78,24 @@ function HomeLayout() {
                 {/* <!-- Chat List --> */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col scrollbar-hide">
                     {/* recentChats is a list of dictionary */}
-                    {Object.entries(recentChats).map(([chatId, message]) => {
+                    {
+                        chats.id.map((chatId) => {
+                            const chat = chats.entities[chatId];
+                            return <RecentMessageComponent
+                                key={chatId}
+                                chat={chat}
+                            // chatId={chatId}
+                            // userName={message['user']['username']}
+                            // userImage={message.user.avatarUrl}
+                            // recentMessage={message.content}
+                            // sentByCurrentUser={message.senderId === userData._id}
+                            // unreadCount={1}
+                            // recentMessageDate={message.sentAt}
+                            />
+                        })
 
-                        // console.log(message.id + "-" + message.recentMessageDate.getTime()),
+                    }
+                    {/* {Object.entries(recentChats).map(([chatId, message]) => {
                         return <RecentMessageComponent
                             key={chatId}
                             chatId={chatId}
@@ -99,7 +106,7 @@ function HomeLayout() {
                             unreadCount={1}
                             recentMessageDate={message.sentAt}
                         />
-                    })}
+                    })} */}
 
                 </div>
             </aside>

@@ -12,6 +12,39 @@ export function registerMessageHandlers(io, socket, onlineUsers, typingUsers, ty
         socket.data.chatId = chatId;
     })
 
+    socket.on("start_typing", async ({ sentTo, chatType, chatId }) => {
+        try {
+            const chatKey = `${chatType}:${chatId}`;
+            const userId = socket.user?._id;
+
+            if (chatType === 'direct') {
+
+                if (!typingState[chatType]) typingState[chatType] = {}
+                if (!typingState[chatType][chatId]) {
+                    typingState[chatType][chatId] = new Set();
+                }
+                typingState[chatType][chatId].add(userId);
+
+                const receiverSocketId = onlineUsers[sentTo];
+                if (receiverSocketId) {
+                    io.to(chatKey).emit("get_typing_users", {
+                        typing: Array.from(typingState[chatType][chatId])
+                    })
+                }
+
+            } else if (chatType === "group") {
+                // TODO: group logic not written
+            } else {
+                io.emit("start_typing_error", { error: "Invalid chat type" });
+            }
+
+        } catch (error) {
+            console.error("start_typing error: ", error.message);
+            io.emit("start_typing_error", { error: error.message });
+        }
+
+    });
+
     socket.on("toggle_typing", async ({ startTyping = true }) => {
         try {
             const { chatType, chatId } = socket.data;
@@ -52,9 +85,17 @@ export function registerMessageHandlers(io, socket, onlineUsers, typingUsers, ty
         }
     });
 
-    socket.on("send_message", async ({ content, chatType, chatId, sentTo, replyToMessageId }) => {
+    socket.on("send_message", async ({ tempId, content, chatType, chatId, sentTo, replyToMessageId }) => {
         try {
             const senderId = socket.user?._id;
+            // console.log("All Payloads: ", tempId, content, chatType, chatId, sentTo, replyToMessageId)
+
+            if (content === "") {
+                throw new Error("Content cannot be empty");
+            }
+            if (!tempId) {
+                throw new Error("TempId is required");
+            }
 
             if (chatType === 'direct' && !sentTo) {
                 throw new Error("sentTo is required for direct chat");
@@ -65,7 +106,7 @@ export function registerMessageHandlers(io, socket, onlineUsers, typingUsers, ty
             }
 
             if (chatType === 'direct') {
-                const { message, directChat } = await createMessage({
+                const { message, directChat, isNewChat } = await createMessage({
                     senderId,
                     chatType,
                     chatId,
@@ -78,15 +119,16 @@ export function registerMessageHandlers(io, socket, onlineUsers, typingUsers, ty
                 if (receiverSocketId) {
                     io.to(`${chatType}:${directChat._id}`).emit("receive_message", {
                         message,
-                        chatType,
-                        chatId: directChat._id
+                        chat: directChat,
+                        isNewChat
                     });
                 }
 
                 io.emit("message_sent", {
+                    tempId,
                     message,
-                    chatType,
-                    chatId: directChat._id
+                    chat: directChat,
+                    isNewChat
                 });
 
             } else {

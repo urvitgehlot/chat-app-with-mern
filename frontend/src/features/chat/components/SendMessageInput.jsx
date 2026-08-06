@@ -1,20 +1,32 @@
 import { useState } from "react";
 import { useChat } from "../useChat";
 import { useAuth } from "../../auth/useAuth";
+import { createChatKey } from "../../../utils/chatKey";
 
 
-function SendMessageInput({ inputType = "direct" }) {
+function SendMessageInput({ inputType = "direct", chatId }) {
 
     const [message, setMessage] = useState();
-    const { sendMessage, currentChat } = useChat();
+    const { sendMessage, chats } = useChat();
     const { userData } = useAuth();
+
+    const chatKey = createChatKey(inputType, chatId);
 
     const submitMessage = () => {
         if (!message) {
             return
         }
+
+        // console.log(currentChat)
+        sendMessage({
+            tempId: crypto.randomUUID(),
+            content: message,
+            chatType: inputType,
+            chatId: chatId,
+            sentTo: chats.entities[chatKey].participants.find(user => user._id !== userData._id)._id,
+            senderId: userData._id,
+        },)
         setMessage("");
-        sendMessage({ content: message, chatType: inputType, chatId: currentChat?.chatId, sentTo: currentChat?.user?._id })
     }
 
     const handleKeyDown = (e) => {

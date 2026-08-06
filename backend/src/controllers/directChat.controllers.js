@@ -62,38 +62,310 @@ const getRecentChats = asyncHandler(async (req, res) => {
 
     const directChatIds = directChats.map(chat => chat._id);
 
-    const recentChats = await Message.aggregate([
+    // const pipeline = [
+    //     {
+    //         $match: {
+    //             directChat: {
+    //                 $in: directChatIds
+    //             },
+    //         },
+    //     },
+    //     {
+    //         $group: {
+    //             _id: "$directChat",
+    //             lastMessage: {
+    //                 $first: "$$ROOT",
+    //             },
+    //         }
+    //     },
+    //     {
+    //         $lookup: {
+    //             from: "directchats",
+    //             localField: "_id",
+    //             foreignField: "_id",
+    //             as: "directChat"
+    //         },
+    //     },
+    //     {
+    //         $unwind: {
+    //             path: "$directChat",
+    //             preserveNullAndEmptyArrays: true,
+    //         }
+    //     },
+    //     {
+    //         $lookup: {
+    //             from: "groups",
+    //             localField: "lastMessage.groupId",
+    //             foreignField: "_id",
+    //             as: "group"
+    //         },
+    //     },
+    //     {
+    //         $unwind: {
+    //             path: "$group",
+    //             preserveNullAndEmptyArrays: true,
+    //         }
+    //     },
+    //     {
+    //         $lookup: {
+    //             from: "users",
+    //             let: {
+    //                 participantIds: "$directChat.participants"
+    //             },
+    //             pipeline: [
+    //                 {
+    //                     $match: {
+    //                         $expr: {
+    //                             $in: ["$_id", "$$participantIds"]
+    //                         }
+    //                     }
+    //                 },
+    //                 {
+    //                     $project: {
+    //                         _id: 1,
+    //                         username: 1,
+    //                         displayName: 1,
+    //                         avatarUrl: 1,
+    //                         lastActiveAt: 1,
+    //                         aboutMe: 1,
+    //                     }
+    //                 }
+    //             ],
+    //             as: "directChat.participants"
+    //         }
+    //     },
+    //     {
+    //         $lookup: {
+    //             from: "messages",
+    //             let: {
+    //                 chatId: "$_id"
+    //             },
+    //             pipeline: [
+    //                 {
+    //                     $match: {
+    //                         $expr: {
+    //                             $eq: ["$directChat", "$$chatId"]
+    //                         }
+    //                     }
+    //                 },
+    //                 {
+    //                     $lookup: {
+    //                         from: "readreceipts",
+    //                         let: {
+    //                             msgId: "$_id"
+    //                         },
+    //                         pipeline: [
+    //                             {
+    //                                 $match: {
+    //                                     $expr: {
+    //                                         $and: [
+    //                                             {
+    //                                                 $eq: ["$messageId", "$$msgId"]
+    //                                             },
+    //                                             {
+    //                                                 $eq: ["$userId", userId]
+    //                                             }
+    //                                         ]
+    //                                     }
+    //                                 }
+    //                             }
+    //                         ],
+    //                         as: "readReceipts"
+    //                     }
+    //                 },
+    //                 {
+    //                     $match: {
+    //                         readReceipts: {
+    //                             $size: 0
+    //                         }
+    //                     }
+    //                 },
+    //                 {
+    //                     $count: "count"
+    //                 },
+    //                 {
+    //                     $sort: { sentAt: -1 },
+    //                 },
+    //             ],
+    //             as: "unreadMessages"
+    //         }
+    //     },
+    //     {
+    //         $addFields: {
+    //             unreadCount: {
+    //                 $ifNull: [
+    //                     {
+    //                         $arrayElemAt: ["$unreadMessages.count", 0]
+    //                     },
+    //                     0
+    //                 ]
+    //             }
+    //         }
+    //     },
+    //     {
+    //         $project: {
+    //             unreadMessages: 0
+    //         }
+    //     }
+    // ];
+
+    // const recentChats = await Message.aggregate(pipeline);
+
+
+    /*
+    What we need in output:
+    - List of {directChats + lastMessage + unreadCount}
+
+    steps:
+    1: get all directChats of current user by participants
+    2: embed last message in directChats
+    3: populate users in participants field of directChats
+    4: compute unreadCount for each directChat
+    5: sort by lastMessage as timestamp
+    */
+
+
+    const pipeline = [
+
         {
             $match: {
-                directChat: { $in: directChatIds },
+                participants: userId,
             },
         },
         {
-            $sort: { sentAt: -1 },
+            $lookup: {
+                from: "messages",
+                localField: "_id",
+                foreignField: "directChat",
+                pipeline: [
+                    {
+                        $sort: {
+                            sentAt: -1,
+                        },
+                    },
+                    {
+                        $limit: 1,
+                    },
+                ],
+                as: "lastMessageArr",
+            },
         },
         {
-            $group: {
-                _id: "$directChat",
-                lastMessage: {
-                    $first: "$$ROOT",
+            $unwind: {
+                path: "$lastMessageArr",
+                preserveNullAndEmptyArrays: true,
+            },
+        },
+        {
+            $lookup: {
+                from: "users",
+                let: {
+                    participantsIds: "$participants",
+                },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $in: ["$_id", "$$participantsIds"],
+                            },
+                        },
+                    },
+                    {
+                        $project: {
+                            _id: 1,
+                            username: 1,
+                            displayName: 1,
+                            avatarUrl: 1,
+                            lastActiveAt: 1,
+                            aboutMe: 1,
+                        },
+                    }
+                ],
+                as: "participants",
+            },
+        },
+        {
+            $lookup: {
+                from: "messages",
+                let: { chatId: "$_id" },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $eq: ["$directChat", "$$chatId"],
+                            },
+                        },
+                    },
+                    {
+                        $lookup: {
+                            from: "readReceipts",
+                            let: { msgId: "$_id" },
+                            pipeline: [
+                                {
+                                    $match: {
+                                        $expr: {
+                                            $and: [
+                                                {
+                                                    $eq: ["$messageId", "$$msgId"],
+                                                    $eq: ["$userId", userId],
+                                                },
+                                            ]
+                                        }
+                                    }
+                                }
+                            ],
+                            as: "readReceipts",
+                        },
+                    },
+                    {
+                        $count: "count",
+                    }
+                ],
+                as: "unreadMessages"
+            },
+        },
+        {
+            $addFields: {
+                lastMessage: "$lastMessageArr",
+                unreadCount: {
+                    $ifNull: [
+                        { $arrayElemAt: ["$unreadMessages.count", 0] },
+                        0
+                    ],
                 },
             }
         },
-    ]);
+        {
+            $project: {
+                unreadMessages: 0,
+                lastMessageArr: 0
+            }
+        },
+        {
+            $sort: {
+                "lastMessage.sentAt": -1,
+            },
+        },
+    ];
 
-    const lastMessage = new Map();
-    directChatIds.map((chatId) => {
-        lastMessage.set(chatId.toString(), null);
-    });
-    recentChats.map((chat) => {
-        lastMessage.set(chat._id.toString(), {
-            ...chat.lastMessage,
-            user: otherUser.get(chat._id.toString()),
-        });
-    });
+
+    const recentChats = await DirectChat.aggregate(pipeline);
+
+
+
+    // const lastMessage = new Map();
+    // directChatIds.map((chatId) => {
+    //     lastMessage.set(chatId.toString(), null);
+    // });
+    // recentChats.map((chat) => {
+    //     lastMessage.set(chat._id.toString(), {
+    //         ...chat.lastMessage,
+    //         user: otherUser.get(chat._id.toString()),
+    //     });
+    // });
 
     return res.status(200)
-        .json(new ApiResponse(200, Object.fromEntries(lastMessage), "Recent chats fetched successfully",));
+        .json(new ApiResponse(200, recentChats, "Recent chats fetched successfully",));
 });
 
 export {

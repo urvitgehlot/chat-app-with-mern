@@ -1,5 +1,5 @@
 import { refreshTokenAsync } from "../features/auth/authSlice";
-import { messageReceived, messageSentAckAsync } from "../features/chat/chatSlice";
+import { messageReceived, messageSentAsync } from "../features/chat/chatSlice";
 import { initialsSocketConnection, disconnectSocket, getSocket } from "../services/socket";
 
 let isInitialized = false;
@@ -9,6 +9,7 @@ const socketMiddleware = (store) => (next) => (action) => {
         action.type === 'auth/login/fulfilled' ||
         action.type === 'auth/register/fulfilled' ||
         action.type === 'auth/refresh-token/fulfilled' ||
+        action.type === 'auth/checkAuth/fulfilled' ||
         action.type === 'chat/restoreAuth'
     ) {
         if (!isInitialized) {
@@ -39,11 +40,11 @@ const socketMiddleware = (store) => (next) => (action) => {
                 })
 
                 socket.on('message_sent', (data) => {
-                    store.dispatch(messageSentAckAsync(data));
+                    store.dispatch(messageSentAsync(data));
                 });
 
-                socket.on('receive_message', (message) => {
-                    store.dispatch(messageReceived(message));
+                socket.on('receive_message', (data) => {
+                    store.dispatch(messageReceived(data));
                 })
 
 

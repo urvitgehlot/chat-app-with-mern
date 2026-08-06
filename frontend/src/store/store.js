@@ -10,6 +10,7 @@ const store = configureStore({
         chat: chatSlice,
     },
     middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(socketMiddleware),
+    devTools: true,
 })
 
 injectStore(store);

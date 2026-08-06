@@ -38,11 +38,16 @@ export const createMessage = async ({
             participants: sortedParticipants
         });
 
+        let isNewChat = false;
+
         if (!directChat) {
             directChat = await DirectChat.create({
                 participants: sortedParticipants,
                 chatCreatedBy: senderId,
-            })
+            });
+
+            await directChat.populate("participants", "_id displayName username avatarUrl lastActiveAt");
+            isNewChat = true;
         }
 
         const message = await Message.create({
@@ -55,7 +60,7 @@ export const createMessage = async ({
 
         await message.populate("senderId", "_id displayName username avatarUrl");
 
-        return { message, directChat };
+        return { message, directChat, isNewChat };
     } else {
         // TODO: handle group chat message creation
     }

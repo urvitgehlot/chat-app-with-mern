@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import ChatBubble from '../../../components/ui/ChatBubble'
 import DirectMessageProfile from '../components/DirectMessageProfile'
 import { useParams } from 'react-router-dom'
@@ -6,23 +6,102 @@ import { useChat } from '../useChat';
 import { useAuth } from '../../auth/useAuth';
 import { formatedSmartDate } from '../../../utils/date';
 import SendMessageInput from '../components/SendMessageInput';
+import { createChatKey } from '../../../utils/chatKey';
 
 function DirectMessage() {
     const { directChatId } = useParams();
-    const { recentChats, getUserDirectChatMessages, currentChatMessagesStatus, currentChatMessages, currentChat, joinChat } = useChat();
+    const { chats, messages, users, joinChat, getChatMessagesByPage } = useChat();
     const { userData } = useAuth();
 
+    const [showGoToBottomBtn, setShowGoToBottomBtn] = useState(false);
+
+    const chatRef = useRef();
+    const chatBottomRef = useRef();
+    const chatTopRef = useRef();
+
+    const isLoading = messages.byChatKey[`direct:${directChatId}`]?.loading;
+    const isInitialLoading = isLoading && (!messages.byChatKey[`direct:${directChatId}`]?.ids || messages.byChatKey[`direct:${directChatId}`]?.ids.length === 0);
+
+    // const chatKey = useMemo(() => createChatKey("direct", directChatId), [directChatId]);
+
+    const currentChatUser = useMemo(() => {
+        const participants = chats.entities[`direct:${directChatId}`]?.participants;
+        if (!participants) {
+            return null;
+        }
+        return participants.find(participant => participant._id !== userData?._id);
+    }, [userData?._id]);
+
     useEffect(() => {
-        getUserDirectChatMessages({ chatId: directChatId });
+
+        if (chats.loading) return;
+
+        getChatMessagesByPage({
+            chatId: directChatId,
+            page: 1,
+            limit: 20,
+            chatType: "direct",
+        });
         joinChat({ chatId: directChatId, chatType: 'direct' });
+    }, [directChatId, chats.loading]);
 
-        // return ()=> leave Chat logic for cleanup
+    useEffect(() => {
 
-    }, [directChatId]);
+        if (isLoading || !chatRef.current || !chatTopRef.current) return;
+
+        const observer = new IntersectionObserver(([entry]) => {
+            if (entry.isIntersecting && !isLoading && !chats.loading) {
+
+
+                getChatMessagesByPage({
+                    chatId: directChatId,
+                    page: messages.byChatKey[`direct:${directChatId}`]?.currentPage + 1,
+                    limit: 20,
+                    chatType: "direct",
+                });
+
+            }
+        }, {
+            root: chatRef.current,
+            threshold: 0,
+        });
+
+        if (chatTopRef.current) {
+            observer.observe(chatTopRef.current);
+        }
+
+        return () => observer.disconnect();
+
+    }, [isLoading, directChatId, chats.loading]);
+
+    useEffect(() => {
+
+        if (isLoading || !chatRef.current || !chatBottomRef.current) return;
+
+        const observer = new IntersectionObserver(([entry]) => {
+            if (entry.isIntersecting) {
+                setShowGoToBottomBtn(false);
+            } else {
+                setShowGoToBottomBtn(true);
+            }
+        }, {
+            root: chatRef.current,
+            threshold: 0,
+        });
+
+        if (chatBottomRef.current) {
+            observer.observe(chatBottomRef.current);
+        }
+
+        return () => observer.disconnect();
+
+    }, [isLoading, directChatId]);
 
 
     return (
-        currentChatMessagesStatus === "pending" ? <div>Loading</div> :
+        isInitialLoading ? < center className='flex items-center justify-center h-screen w-screen' >
+            <span className="loader"></span>
+        </center > :
             <>
                 <main className="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#101622] relative">
                     {/* <!-- Chat Header --> */}
@@ -37,13 +116,13 @@ function DirectMessage() {
                             <div className="relative">
                                 <div className="bg-center bg-no-repeat bg-cover rounded-full h-10 w-10"
                                     data-alt="Portrait of Sarah Miller"
-                                    style={{ backgroundImage: `url("${currentChat?.user?.avatarUrl}")` }}>
+                                    style={{ backgroundImage: `url("${currentChatUser?.avatarUrl}")` }}>
                                 </div>
                                 <span
                                     className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-white dark:ring-[#101622]"></span>
                             </div>
                             <div>
-                                <h2 className="text-base font-bold leading-tight">{currentChat?.user?.displayName}</h2>
+                                <h2 className="text-base font-bold leading-tight">{currentChatUser?.displayName}</h2>
                                 <p className="text-xs text-green-500 font-medium">Active now</p>
                             </div>
                         </div>
@@ -67,42 +146,70 @@ function DirectMessage() {
                         </div>
                     </header>
                     {/* <!-- Messages Stream --> */}
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scroll-smooth flex flex-col-reverse scrollbar-hide">
+                    <div ref={chatRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scroll-smooth flex flex-col-reverse scrollbar-hide relative">
+
+                        <div ref={chatBottomRef}>
+                            {/* Intersection Overserver */}
+                        </div>
 
                         {
-                            currentChatMessages.map((message, index) => {
+                            showGoToBottomBtn &&
+                            <button onClick={() => {
+                                chatRef.current.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
+                                setShowGoToBottomBtn(false);
+                            }}
+                                className="text-white w-10 h-10 bg-primary p-2 rounded-full flex items-center justify-center cursor-pointer sticky ml-auto w-fit bottom-4 right-4 z-10">
+                                <span className="material-symbols-outlined text-[20px]">keyboard_arrow_down</span>
+                            </button>
+                        }
+
+                        {
+                            messages.byChatKey[`direct:${directChatId}`]?.ids.map(messageId => {
+                                const message = messages.entities[messageId];
                                 const sentAt = new Date(`${message.sentAt}`);
-                                const isReceived = message.senderId._id !== userData._id;
+
+                                const otherUser = chats.entities[`direct:${directChatId}`]?.participants?.find(participant => participant._id !== userData._id);
 
                                 // Check if we need a date divider
-                                const currentDateStr = sentAt.toDateString();
-                                const nextMessage = currentChatMessages[index + 1];
-                                const nextDateStr = nextMessage
-                                    ? new Date(`${nextMessage.sentAt}`).toDateString()
-                                    : null;
-                                const showDateDivider = currentDateStr !== nextDateStr;
+                                // const currentDateStr = sentAt.toDateString();
+                                // const nextMessage = currentChatMessages[index + 1];
+                                // const nextDateStr = nextMessage
+                                //     ? new Date(`${nextMessage.sentAt}`).toDateString()
+                                //     : null;
+                                // const showDateDivider = currentDateStr !== nextDateStr;
 
                                 return (
-                                    <React.Fragment key={message._id}>
+                                    <React.Fragment key={messageId}>
                                         {/* in this ChatBubble is using first instead of Date divider because the scroll is in reverse */}
                                         <ChatBubble
                                             message={message.content}
-                                            isReceived={isReceived}
-                                            senderAvatar={message.senderId.avatarUrl}
+                                            isReceived={message.senderId !== userData._id}
+                                            senderAvatar={message.senderId !== userData._id ? otherUser?.avatarUrl : null}
                                             msgDateTime={sentAt}
                                         />
-                                        {showDateDivider ? (
+                                        {/* {showDateDivider ? (
                                             <div className="flex justify-center my-4">
                                                 <span
                                                     className="text-xs font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-white/5 px-3 py-1 rounded-full">
                                                     {formatedSmartDate({ date: sentAt, showTimeIfToday: false })}
                                                 </span>
                                             </div>
-                                        ) : null}
+                                        ) : null} */}
                                     </React.Fragment>
                                 );
                             })
                         }
+                        <div ref={chatTopRef}>
+                            {/* Intersection Overserver */}
+                            {isLoading && !isInitialLoading && (
+                                // <div className="text-center py-2 text-xs text-slate-400">Loading older messages...</div>
+                                < center className='flex items-center justify-center h-screen w-screen' >
+                                    <span className="loader"></span>
+                                </center >
+                            )}
+                        </div>
+
+                        {/* test messages */}
 
                         {/* <!-- Date Divider --> */}
                         <div className="flex justify-center my-4">
@@ -203,10 +310,10 @@ function DirectMessage() {
 
                     </div>
                     {/* <!-- Input Area --> */}
-                    <SendMessageInput inputType="direct" />
-                </main>
+                    <SendMessageInput inputType="direct" chatId={directChatId} />
+                </main >
                 {/* <!-- Right Details Sidebar --> */}
-                <DirectMessageProfile />
+                < DirectMessageProfile currentChatUser={currentChatUser} />
             </>
     )
 }

@@ -8,6 +8,7 @@ export const getRecentChats = async () => api.get(`${directChatApi}/get-recent-c
 
 export const getUserDirectChatMessages = async (data) => api.get(`${messageApi}/get-user-all-message`, { params: data }).then((res) => res.data);
 
+export const getChatMessagesByPage = async (data) => api.get(`${messageApi}/get-messsages-by-pages`, { params: data }).then((res) => res.data);
 // const sendMessage = async (message) => axios.post("/api/chat/send-message", message);
 
 
