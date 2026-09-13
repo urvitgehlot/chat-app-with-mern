@@ -6,6 +6,8 @@ const api = axios.create({
     withCredentials: true, // Crucial for sending HTTP-only cookies
 });
 
+axios.defaults.withCredentials = true;
+
 // Flag to prevent multiple simultaneous refresh token requests
 let isRefreshing = false;
 let failedQueue = [];
@@ -32,10 +34,13 @@ api.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
-        const refreshToken = document.cookie.split(';').find(cookie => cookie.startsWith('refreshToken='));
-
         // If the error is 401 and we haven't already retried this request
-        if (error.response?.status === 401 && !originalRequest._retry && refreshToken) {
+        if (
+            error.response?.status === 401 &&
+            !originalRequest._retry &&
+            !originalRequest.url.includes('/users/refresh-token') &&
+            !originalRequest.url.includes('/users/logout')
+        ) {
 
             // Skip interceptor for refresh-token AND logout to avoid infinite loops
             if (originalRequest.url.includes('/users/refresh-token') || originalRequest.url.includes('/users/logout')) {
