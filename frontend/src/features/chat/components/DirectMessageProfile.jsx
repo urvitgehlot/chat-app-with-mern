@@ -67,7 +67,7 @@ function DirectMessageProfile({ currentChatUser }) {
       <div className="p-4 border-t border-gray-200 dark:border-white/10">
         <h3 className="text-sm font-bold mb-3 px-2">Settings</h3>
         <div className="flex flex-col gap-1">
-          <button
+          {/* <button
             className="flex items-center justify-between w-full p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-[#232f48] group transition-colors">
             <div className="flex items-center gap-3">
               <span
@@ -84,7 +84,7 @@ function DirectMessageProfile({ currentChatUser }) {
               <span className="text-sm font-medium">Privacy &amp; Support</span>
             </div>
             <span className="material-symbols-outlined text-slate-400 text-[16px]">arrow_forward_ios</span>
-          </button>
+          </button> */}
           <button
             className="flex items-center justify-between w-full p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 group transition-colors mt-2">
             <div className="flex items-center gap-3">

@@ -2,6 +2,7 @@ import { Server } from "socket.io";
 import cookie from "cookie"
 import jwt from "jsonwebtoken"
 import { registerMessageHandlers } from "./handlers/message.handler.js";
+import { DirectChat } from "../models/directChat.model.js";
 
 
 let io = null;
@@ -62,10 +63,43 @@ export function initSocketIO(httpServer) {
     io.on("connection", (socket) => {
         console.log("A user connected: ", socket.id)
 
+        // online users:- I want all users that been done chat with the user i want all who is online right now
+
         // Join Event
-        socket.on("join", (userId) => {
+        socket.on("join", async (userId) => {
             onlineUsers[userId] = socket.id
             console.log(`User ${userId} joined with socket ID: ${socket.id}`)
+
+            try {
+                const userChats = await DirectChat.find({
+                    participants: userId
+                });
+
+                const chattedUserIds = new Set();
+                userChats.forEach(chat => {
+                    chat.participants.forEach(participantId => {
+                        const idStr = participantId.toString();
+                        if (idStr !== userId) {
+                            chattedUserIds.add(idStr);
+                        }
+                    });
+                });
+
+                const onlineFriends = Array.from(chattedUserIds).filter(id => onlineUsers[id]);
+
+                socket.emit("online_users", onlineFriends)
+
+                onlineFriends.forEach(friendId => {
+                    const friendSocketId = onlineUsers[friendId];
+                    if (friendSocketId) {
+                        io.to(friendSocketId).emit("user_online", userId);
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error fetching online friends: ", error);
+            }
+
         });
 
         // Send Message Event
@@ -89,14 +123,47 @@ export function initSocketIO(httpServer) {
         registerMessageHandlers(io, socket, onlineUsers, typingUsers, typingState);
 
         // Disconnect Event
-        socket.on("disconnect", () => {
+        socket.on("disconnect", async () => {
             console.log("A user disconnected: ", socket.id)
+
+            let disconnectedUserId = null;
+
             // Remove the user from the users object
             for (const user in onlineUsers) {
                 if (onlineUsers[user] === socket.id) {
+                    disconnectedUserId = user;
                     delete onlineUsers[user]
                     console.log(`User ${user} with socket ID ${socket.id} has been removed from the users list.`)
                     break
+                }
+            }
+
+            if (disconnectedUserId) {
+
+                try {
+                    const userChats = await DirectChat.find({
+                        participants: disconnectedUserId
+                    });
+
+                    const chattedUserIds = new Set();
+                    userChats.forEach(chat => {
+                        chat.participants.forEach(participantId => {
+                            const idStr = participantId.toString();
+                            if (idStr !== disconnectedUserId) {
+                                chattedUserIds.add(idStr);
+                            }
+                        });
+                    });
+
+                    Array.from(chattedUserIds).forEach(friendId => {
+                        const friendSocketId = onlineUsers[friendId];
+                        if (friendSocketId) {
+                            io.to(friendSocketId).emit("user_offline", disconnectedUserId);
+                        }
+                    });
+
+                } catch (error) {
+                    console.error("Error notifying friends of disconnect: ", error);
                 }
             }
         });

@@ -6,8 +6,10 @@ import {
     joinChat as joinChatAction,
     // toggleTyping as toggleTypingAction,
     sendMessage as sendMessageAction,
-    messageReceived as messageReceivedAction
+    messageReceived as messageReceivedAction,
+    sendMessageAsync
 } from "./chatSlice";
+import { validateAndCreateMessage } from "./message.schema";
 
 
 export const useChat = () => {
@@ -35,8 +37,33 @@ export const useChat = () => {
     //     dispatch(toggleTypingAction({ chatId, type }));
     // }
 
-    const sendMessage = ({ tempId, content, chatType, chatId, sentTo, senderId, replyToMessageId }) => {
-        dispatch(sendMessageAction({ tempId, content, chatType, chatId, sentTo, senderId, replyToMessageId }));
+    // const sendMessage = ({ tempId, content, chatType, chatId, sentTo, senderId, sendByMe = true, replyToMessageId }) => {
+    //     dispatch(sendMessageAction({ tempId, content, chatType, chatId, sentTo, senderId, sendByMe, replyToMessageId }));
+    // }
+
+    // const sendMessage = ({ tempId, content, chatType, chatId, sentTo, senderId, sendByMe = true, replyToMessageId }) => {
+    //     dispatch(sendMessageAsync({ tempId, content, chatType, chatId, sentTo, senderId, sendByMe, replyToMessageId }));
+    // }
+
+    // const sendMessage = (
+    //     {
+    //         tempId,
+    //         content,
+    //         chatType,
+    //         chatId,
+    //         sentTo,
+    //         senderId,
+    //         sendByMe = true,
+    //         replyToMessageId
+    //     },
+    // ) => {
+    //     dispatch(sendMessageAsync({ tempId, content, chatType, chatId, sentTo, senderId, sendByMe, replyToMessageId }));
+    // };
+
+    const sendMessage = (message) => {
+        // const validatedMessage = validateAndCreateMessage(messageInput);
+        // console.log("validatedMessage: ", validatedMessage);
+        dispatch(sendMessageAsync(message));
     }
 
     return {

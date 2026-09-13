@@ -2,7 +2,7 @@ import { createBrowserRouter } from 'react-router-dom';
 import AuthLayout from '../components/layouts/AuthLayout';
 import Home from '../features/home/components/Home';
 import ProfileComplete from '../pages/ProfileComplete';
-import PageNotFound from '../pages/pageNotFound';
+import PageNotFound from '../pages/PageNotFound';
 import HomeLayout from '../components/layouts/HomeLayout';
 import { AuthPage } from '../features/auth';
 import DirectMessage from '../features/chat/pages/DirectMessage';
@@ -51,6 +51,14 @@ const router = createBrowserRouter([
         path: '/login',
         element: (
             <AuthLayout authentication={false}>
+                <AuthPage />
+            </AuthLayout>
+        )
+    },
+    {
+        path: '/logout',
+        element: (
+            <AuthLayout authentication={false} logoutUser={true}>
                 <AuthPage />
             </AuthLayout>
         )

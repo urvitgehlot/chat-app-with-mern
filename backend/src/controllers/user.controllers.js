@@ -155,8 +155,8 @@ const logoutUser = asyncHandler(async (req, res) => {
 
     return res
         .status(200)
-        .cookie("accessToken", httpsOptions)
-        .cookie("refreshToken", httpsOptions)
+        .clearCookie("accessToken", httpsOptions)
+        .clearCookie("refreshToken", httpsOptions)
         .json(
             new ApiResponse(200, {}, "Logout Successfull")
         )
@@ -202,7 +202,13 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
             )
 
     } catch (error) {
-        throw new ApiError(401, error?.message || "Something went wrong while refreshing access token")
+        return res
+            .status(401)
+            .clearCookie("accessToken", httpsOptions)
+            .clearCookie("refreshToken", httpsOptions)
+            .json(
+                new ApiResponse(401, {}, "Something went wrong while refreshing access token")
+            )
     }
 })
 

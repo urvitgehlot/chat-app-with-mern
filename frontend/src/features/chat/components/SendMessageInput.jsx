@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useChat } from "../useChat";
 import { useAuth } from "../../auth/useAuth";
 import { createChatKey } from "../../../utils/chatKey";
+import { validateAndCreateMessage } from "../message.schema";
 
 
-function SendMessageInput({ inputType = "direct", chatId }) {
+function SendMessageInput({ inputType = "direct", chatId, currentChatUser }) {
 
     const [message, setMessage] = useState();
     const { sendMessage, chats } = useChat();
@@ -17,15 +18,19 @@ function SendMessageInput({ inputType = "direct", chatId }) {
             return
         }
 
-        // console.log(currentChat)
-        sendMessage({
+        // console.log(chats?.entities?.[chatKey]?.participants)
+        const validatedMessage = validateAndCreateMessage({
             tempId: crypto.randomUUID(),
             content: message,
             chatType: inputType,
             chatId: chatId,
-            sentTo: chats.entities[chatKey].participants.find(user => user._id !== userData._id)._id,
             senderId: userData._id,
-        },)
+            sendByMe: true,
+            sentTo: currentChatUser,
+            sentAt: Date.now(),
+        });
+
+        sendMessage(validatedMessage);
         setMessage("");
     }
 

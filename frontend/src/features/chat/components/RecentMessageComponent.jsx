@@ -23,8 +23,9 @@ function RecentMessageComponent({
 
     const chatUser = useMemo(() => {
         if (chatType === "direct") {
-            return chat.participants.find((participant) => participant._id !== userData.id);
+            return chat.participants.find((participant) => participant._id !== userData._id);
         }
+        console.log("group")
         return null;
     }, [chatType, chat.participants]);
     const formatedDate = useMemo(() => formatedSmartDate({ date: new Date(lastMessage.sentAt) }), [lastMessage]);

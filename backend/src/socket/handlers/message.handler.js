@@ -3,11 +3,13 @@ import { createMessage } from "../../services/message.service.js";
 
 export function registerMessageHandlers(io, socket, onlineUsers, typingUsers, typingState) {
 
-    socket.on("join_chat", ({ chatId, chatType }) => {
+    socket.on("join_chat", async ({ chatId, chatType }) => {
         if (chatType !== 'direct' && chatType !== 'group') {
             throw new Error("Invalid chat type");
         }
-        socket.join(`${chatType}:${chatId}`);
+        await socket.join(`${chatType}:${chatId}`);
+        // console.log("All sockets in room: ", (await io.in(`${chatType}:${chatId}`).fetchSockets()).map((s) => s.user));
+        console.log("Joined room: ", `${chatType}:${chatId}`);
         socket.data.chatType = chatType;
         socket.data.chatId = chatId;
     })
@@ -85,8 +87,10 @@ export function registerMessageHandlers(io, socket, onlineUsers, typingUsers, ty
         }
     });
 
-    socket.on("send_message", async ({ tempId, content, chatType, chatId, sentTo, replyToMessageId }) => {
+    socket.on("send_message", async (data) => {
         try {
+            console.log("send_message payload: ", data);
+            const { tempId, content, chatType, chatId, sentTo, replyToMessageId } = data;
             const senderId = socket.user?._id;
             // console.log("All Payloads: ", tempId, content, chatType, chatId, sentTo, replyToMessageId)
 
@@ -97,7 +101,7 @@ export function registerMessageHandlers(io, socket, onlineUsers, typingUsers, ty
                 throw new Error("TempId is required");
             }
 
-            if (chatType === 'direct' && !sentTo) {
+            if (chatType === 'direct' && !sentTo?._id) {
                 throw new Error("sentTo is required for direct chat");
             }
 
@@ -110,21 +114,31 @@ export function registerMessageHandlers(io, socket, onlineUsers, typingUsers, ty
                     senderId,
                     chatType,
                     chatId,
-                    sentTo,
+                    sentTo: sentTo._id,
                     content,
                     replyToMessageId,
                 });
 
-                const receiverSocketId = onlineUsers[sentTo];
+                const receiverSocketId = onlineUsers[sentTo._id];
                 if (receiverSocketId) {
-                    io.to(`${chatType}:${directChat._id}`).emit("receive_message", {
+                    // io.to(`${chatType}:${directChat._id}`).emit("receive_message", {
+                    //     message,
+                    //     chat: directChat,
+                    //     isNewChat
+                    // });
+                    // socket.to(`${chatType}:${directChat._id}`).emit("receive_message", {
+                    //     message,
+                    //     chat: directChat,
+                    //     isNewChat
+                    // });
+                    io.to(receiverSocketId).emit("receive_message", {
                         message,
                         chat: directChat,
                         isNewChat
                     });
                 }
 
-                io.emit("message_sent", {
+                socket.emit("message_sent", {
                     tempId,
                     message,
                     chat: directChat,

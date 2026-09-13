@@ -2,7 +2,7 @@ import express from "express"
 import cookieParser from "cookie-parser"
 import cors from "cors"
 import swaggerUI from "swagger-ui-express"
-import swaggerSpecs from "../config/swagger.js" 
+import swaggerSpecs from "../config/swagger.js"
 
 const app = express()
 
@@ -50,6 +50,8 @@ import userRouter from "./routes/user.routes.js"
 import directChatRouter from "./routes/directChat.routes.js"
 import groupRouter from './routes/group.routes.js'
 import messageRouter from "./routes/message.routes.js"
+
+import { authLimiter, limiter } from "./middlewares/ratelimit.middleware.js"
 
 
 // routes declaration

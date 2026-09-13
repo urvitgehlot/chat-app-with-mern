@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom';
-import { checkAuthAsync } from '../../features/auth/authSlice';
+import { checkAuthAsync, logoutAsync } from '../../features/auth/authSlice';
 
-export default function Protected({ children, authentication = true }) {
+export default function Protected({ children, authentication = true, logoutUser = false }) {
   const navigate = useNavigate();
   const { status: authStatus, loading } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
@@ -24,10 +24,13 @@ export default function Protected({ children, authentication = true }) {
 
     if (authentication && !authStatus) {
       navigate("/login");
-    } else if (!authentication && authStatus) {
+    } else if (!authentication && authStatus && !logoutUser) {
       navigate("/");
+    } else if (logoutUser && authStatus) {
+      dispatch(logoutAsync());
+      navigate("/login");
     }
-  }, [authentication, authStatus, loading, navigate, isReady]);
+  }, [authentication, authStatus, loading, navigate, isReady, logoutUser]);
 
   if (!isReady || loading) {
     return (

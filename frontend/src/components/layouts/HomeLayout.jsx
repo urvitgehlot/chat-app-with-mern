@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import RecentMessageComponent from '../../features/chat/components/RecentMessageComponent'
 import { useDispatch, useSelector } from 'react-redux'
-import { restoreAuth } from '../../features/chat/chatSlice'
 import { useChat } from '../../features/chat/useChat'
 
 function HomeLayout() {
@@ -81,6 +80,7 @@ function HomeLayout() {
                     {
                         chats.id.map((chatId) => {
                             const chat = chats.entities[chatId];
+                            // console.log(chat.);
                             return <RecentMessageComponent
                                 key={chatId}
                                 chat={chat}

@@ -1,16 +1,16 @@
 import { refreshTokenAsync } from "../features/auth/authSlice";
-import { messageReceived, messageSentAsync } from "../features/chat/chatSlice";
+import { messageReceived, messageSentAsync, receiveMessageAsync } from "../features/chat/chatSlice";
 import { initialsSocketConnection, disconnectSocket, getSocket } from "../services/socket";
 
 let isInitialized = false;
 
 const socketMiddleware = (store) => (next) => (action) => {
     if (
-        action.type === 'auth/login/fulfilled' ||
-        action.type === 'auth/register/fulfilled' ||
+        // action.type === 'auth/login/fulfilled' ||
+        // action.type === 'auth/register/fulfilled' ||
         action.type === 'auth/refresh-token/fulfilled' ||
-        action.type === 'auth/checkAuth/fulfilled' ||
-        action.type === 'chat/restoreAuth'
+        action.type === 'auth/checkAuth/fulfilled'
+        // action.type === 'chat/restoreAuth'
     ) {
         if (!isInitialized) {
             isInitialized = true;
@@ -39,13 +39,26 @@ const socketMiddleware = (store) => (next) => (action) => {
                     console.log('Socket connected:', socket.id);
                 })
 
+                socket.on("disconnect", () => {
+                    console.error("Socket disconnected");
+                })
+
                 socket.on('message_sent', (data) => {
                     store.dispatch(messageSentAsync(data));
                 });
 
+                // socket.on('receive_message', (data) => {
+                //     store.dispatch(messageReceived(data));
+                // })
+
                 socket.on('receive_message', (data) => {
-                    store.dispatch(messageReceived(data));
+                    // console.log("receive_message: ", data)
+                    store.dispatch(receiveMessageAsync(data));
                 })
+
+                // socket.on("online_users", ({ onlineUsers }) => {
+                //     store.dispatch(setOnlineUsers(onlineUsers));
+                // })
 
 
                 socket.on('get_typing_users', ({ typing }) => {
@@ -63,10 +76,11 @@ const socketMiddleware = (store) => (next) => (action) => {
         isInitialized = false;
     }
 
-    if (action.type === 'chat/sendMessage') {
+    if (action.type === 'chat/sendMessage/pending') {
         const socket = getSocket();
+        console.log("sending socket: ", action)
         if (socket) {
-            socket.emit('send_message', action.payload);
+            socket.emit('send_message', action.meta.arg);
         }
     }
 

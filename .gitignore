@@ -28,6 +28,7 @@ plan temp.txt
 implementation_plan.md
 dexie_guide.md
 temp.html
+/temp_htmls
 
 
 # Enviornments

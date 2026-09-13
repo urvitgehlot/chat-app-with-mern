@@ -7,6 +7,7 @@ import { useAuth } from '../../auth/useAuth';
 import { formatedSmartDate } from '../../../utils/date';
 import SendMessageInput from '../components/SendMessageInput';
 import { createChatKey } from '../../../utils/chatKey';
+import ManageContactModal from '../components/ManageContactModal';
 
 function DirectMessage() {
     const { directChatId } = useParams();
@@ -14,6 +15,7 @@ function DirectMessage() {
     const { userData } = useAuth();
 
     const [showGoToBottomBtn, setShowGoToBottomBtn] = useState(false);
+    const [showManageContactModal, setShowManageContactModal] = useState(false);
 
     const chatRef = useRef();
     const chatBottomRef = useRef();
@@ -310,10 +312,13 @@ function DirectMessage() {
 
                     </div>
                     {/* <!-- Input Area --> */}
-                    <SendMessageInput inputType="direct" chatId={directChatId} />
+                    <SendMessageInput inputType="direct" chatId={directChatId} currentChatUser={currentChatUser} />
                 </main >
                 {/* <!-- Right Details Sidebar --> */}
                 < DirectMessageProfile currentChatUser={currentChatUser} />
+
+                {showManageContactModal && <ManageContactModal onClose={() => setShowManageContactModal(false)} />}
+
             </>
     )
 }

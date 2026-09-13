@@ -29,6 +29,14 @@ const messageSchema = new Schema(
             ref: "User",
             required: true,
         },
+        isDeleted: {
+            type: Schema.Types.Boolean,
+            default: false,
+        },
+        deletedBy: {
+            type: Schema.Types.ObjectId,
+            ref: "User",
+        },
         sentAt: {
             type: Date,
             default: Date.now,

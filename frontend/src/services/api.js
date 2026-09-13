@@ -32,8 +32,10 @@ api.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
+        const refreshToken = document.cookie.split(';').find(cookie => cookie.startsWith('refreshToken='));
+
         // If the error is 401 and we haven't already retried this request
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        if (error.response?.status === 401 && !originalRequest._retry && refreshToken) {
 
             // Skip interceptor for refresh-token AND logout to avoid infinite loops
             if (originalRequest.url.includes('/users/refresh-token') || originalRequest.url.includes('/users/logout')) {
