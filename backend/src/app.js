@@ -6,6 +6,8 @@ import swaggerSpecs from "../config/swagger.js"
 
 const app = express()
 
+
+console.log("client url: ", process.env.CLIENT_URL || "http://localhost:5173");
 // Add this right after const app = express()
 app.use(cors({
     origin: process.env.CLIENT_URL || "http://localhost:5173",
