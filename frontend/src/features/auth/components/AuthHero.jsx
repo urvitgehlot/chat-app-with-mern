@@ -1,4 +1,5 @@
 import React from 'react'
+import logo from "../../../assets/logo.png"
 
 function AuthHero() {
     return (
@@ -15,7 +16,7 @@ function AuthHero() {
             {/* <!-- Content --> */}
             <div className="relative z-10 flex flex-col items-center max-w-lg">
                 <div className="size-24 mb-8 text-primary">
-                    <img className='w-full h-full drop-shadow-[0_0_5px_rgba(43,108,238,0.5)] animate-pulse' src="/src/assets/logo.png" alt="" />
+                    <img className='w-full h-full drop-shadow-[0_0_5px_rgba(43,108,238,0.5)] animate-pulse' src={logo} alt="" />
                 </div>
                 <h1 className="text-white text-5xl font-extrabold leading-tight tracking-[-0.033em] mb-4">Connect Freely.
                 </h1>

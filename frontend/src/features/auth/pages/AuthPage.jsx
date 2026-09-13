@@ -4,6 +4,7 @@ import AuthTabs from '../components/AuthTabs';
 import AuthForm from '../components/AuthForm';
 import SocialLogin from '../components/SocialLogin';
 import { useAuth } from '../useAuth';
+import logo from "../../../assets/logo.png"
 
 function AuthPage() {
     const [mode, setMode] = useState('login'); // 'login' or 'signup'
@@ -42,7 +43,7 @@ function AuthPage() {
                             {/* <!-- Mobile Brand Header --> */}
                             <div className="lg:hidden absolute top-8 left-8 flex items-center gap-3">
                                 <div className="size-8 text-primary">
-                                    <img className='w-full h-full drop-shadow-[0_0_5px_rgba(43,108,238,0.5)] animate-pulse' src="/src/assets/logo.png" alt="" />
+                                    <img className='w-full h-full drop-shadow-[0_0_5px_rgba(43,108,238,0.5)] animate-pulse' src={logo} alt="" />
                                 </div>
                                 <h2 className="text-white text-lg font-bold tracking-tight">ChatApp</h2>
                             </div>

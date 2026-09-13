@@ -1,6 +1,6 @@
 import React from 'react'
 import { useDispatch } from 'react-redux'
-
+import logo from "../assets/logo.png"
 
 function ProfileComplete() {
     const dispatch = useDispatch();
@@ -16,7 +16,7 @@ function ProfileComplete() {
                 class="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#e5e7eb] dark:border-b-[#232f48] px-10 py-3 bg-white dark:bg-[#111722]">
                 <div class="flex items-center gap-4 text-[#111722] dark:text-white">
                     <div class="size-8 text-primary">
-                        <img className='w-full h-full' src="/src/assets/logo.png" alt="Chat Logo" />
+                        <img className='w-full h-full' src={logo} alt="Chat Logo" />
                     </div>
                     <h2 class="text-lg font-bold leading-tight tracking-[-0.015em]">ChatApp</h2>
                 </div>
