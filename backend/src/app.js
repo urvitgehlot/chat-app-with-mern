@@ -6,6 +6,8 @@ import swaggerSpecs from "../config/swagger.js"
 
 const app = express()
 
+app.set("trust proxy", 1);
+
 
 console.log("client url: ", process.env.CLIENT_URL || "http://localhost:5173");
 // Add this right after const app = express()
