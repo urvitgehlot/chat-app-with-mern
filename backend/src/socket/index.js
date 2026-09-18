@@ -10,12 +10,54 @@ let io = null;
 // userId -> socketId lookup
 let onlineUsers = {};
 
+
+let allChatList = {
+    "chatId": {
+        "chatType": "direct" | "group",
+        "participants": ["userId1", "userId2"]
+    }
+};
+
+let onlineUsersWithThereChatList = {
+    "userId": {
+        "chats": {
+            "chatId": {
+                "chatType": "direct"
+            },
+            "chatId2": {
+                "chatType": "group"
+            },
+            "chatId3": {
+                "chatType": "group"
+            },
+        },
+        "is_online": false,
+    }
+};
+
+let lastSeenUsers = {
+    "userId": {
+        "lastSeen": "timestamp"
+    }
+};
+
 // userId -> {chatDetails: {directChatId,}, startsAt: Timestamp}
 let typingUsers = {};
 
 let typingState = {
     chat: {},
     group: {},
+}
+
+async function getUsersOnlineFriends(userId) {
+    const usersFriends = onlineUsersWithThereChatList[userId];
+
+    for (const chatId in usersFriends.chats) {
+        const chat = usersFriends.chats[chatId];
+
+
+    }
+    // lastSeenUsers[]
 }
 
 export function initSocketIO(httpServer) {

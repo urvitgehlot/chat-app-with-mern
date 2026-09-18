@@ -20,65 +20,76 @@ function DirectMessage() {
     const chatRef = useRef();
     const chatBottomRef = useRef();
     const chatTopRef = useRef();
+    const isFetchingRef = useRef(false);
 
-    const isLoading = messages.byChatKey[`direct:${directChatId}`]?.loading;
-    const isInitialLoading = isLoading && (!messages.byChatKey[`direct:${directChatId}`]?.ids || messages.byChatKey[`direct:${directChatId}`]?.ids.length === 0);
-
-    // const chatKey = useMemo(() => createChatKey("direct", directChatId), [directChatId]);
+    const chatKey = useMemo(() => createChatKey("direct", directChatId), [directChatId]);
+    const chatMessagesState = messages.byChatKey[chatKey];
+    const isLoading = chatMessagesState?.loading || false;
+    const hasMore = chatMessagesState?.hasMore ?? true;
+    const currentPage = chatMessagesState?.currentPage || 1;
+    const isInitialLoading = (isLoading || chats.loading) && (!chatMessagesState?.ids || chatMessagesState?.ids.length === 0);
 
     const currentChatUser = useMemo(() => {
-        const participants = chats.entities[`direct:${directChatId}`]?.participants;
+        const participants = chats.entities[chatKey]?.participants;
         if (!participants) {
             return null;
         }
         return participants.find(participant => participant._id !== userData?._id);
-    }, [userData?._id]);
+    }, [chats.entities, chatKey, userData?._id]);
 
     useEffect(() => {
-
         if (chats.loading) return;
 
         getChatMessagesByPage({
             chatId: directChatId,
             page: 1,
-            limit: 20,
+            limit: 3000,
             chatType: "direct",
         });
         joinChat({ chatId: directChatId, chatType: 'direct' });
     }, [directChatId, chats.loading]);
 
+    // Reset fetching ref once loading completes
     useEffect(() => {
+        if (!isLoading) {
+            isFetchingRef.current = false;
+        }
+    }, [isLoading]);
 
-        if (isLoading || !chatRef.current || !chatTopRef.current) return;
+    // Intersection observer for top (infinite scroll for older messages)
+    useEffect(() => {
+        const topElement = chatTopRef.current;
+        const scrollContainer = chatRef.current;
+
+        if (!topElement || !scrollContainer || !hasMore || chats.loading) return;
 
         const observer = new IntersectionObserver(([entry]) => {
-            if (entry.isIntersecting && !isLoading && !chats.loading) {
-
-
+            if (entry.isIntersecting && !isFetchingRef.current && hasMore && !chats.loading) {
+                isFetchingRef.current = true;
                 getChatMessagesByPage({
                     chatId: directChatId,
-                    page: messages.byChatKey[`direct:${directChatId}`]?.currentPage + 1,
+                    page: (chatMessagesState?.currentPage || 1) + 1,
                     limit: 20,
                     chatType: "direct",
                 });
-
             }
         }, {
-            root: chatRef.current,
-            threshold: 0,
+            root: scrollContainer,
+            threshold: 0.1,
         });
 
-        if (chatTopRef.current) {
-            observer.observe(chatTopRef.current);
-        }
+        observer.observe(topElement);
 
         return () => observer.disconnect();
 
-    }, [isLoading, directChatId, chats.loading]);
+    }, [directChatId, hasMore, chatMessagesState?.currentPage, chats.loading]);
 
+    // Intersection observer for bottom (show/hide go-to-bottom button)
     useEffect(() => {
+        const bottomElement = chatBottomRef.current;
+        const scrollContainer = chatRef.current;
 
-        if (isLoading || !chatRef.current || !chatBottomRef.current) return;
+        if (!bottomElement || !scrollContainer) return;
 
         const observer = new IntersectionObserver(([entry]) => {
             if (entry.isIntersecting) {
@@ -87,17 +98,15 @@ function DirectMessage() {
                 setShowGoToBottomBtn(true);
             }
         }, {
-            root: chatRef.current,
-            threshold: 0,
+            root: scrollContainer,
+            threshold: 0.1,
         });
 
-        if (chatBottomRef.current) {
-            observer.observe(chatBottomRef.current);
-        }
+        observer.observe(bottomElement);
 
         return () => observer.disconnect();
 
-    }, [isLoading, directChatId]);
+    }, [directChatId]);
 
 
     return (
@@ -148,167 +157,60 @@ function DirectMessage() {
                         </div>
                     </header>
                     {/* <!-- Messages Stream --> */}
-                    <div ref={chatRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scroll-smooth flex flex-col-reverse scrollbar-hide relative">
+                    <div ref={chatRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 flex flex-col-reverse scrollbar-hide relative">
 
                         <div ref={chatBottomRef}>
-                            {/* Intersection Overserver */}
+                            {/* Bottom Sentinel */}
                         </div>
 
                         {
                             showGoToBottomBtn &&
                             <button onClick={() => {
-                                chatRef.current.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
+                                chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
                                 setShowGoToBottomBtn(false);
                             }}
-                                className="text-white w-10 h-10 bg-primary p-2 rounded-full flex items-center justify-center cursor-pointer sticky ml-auto w-fit bottom-4 right-4 z-10">
+                                className="text-white w-10 h-10 bg-primary p-2 rounded-full flex items-center justify-center cursor-pointer sticky ml-auto w-fit bottom-4 right-4 z-10 shadow-lg hover:opacity-90 transition-opacity">
                                 <span className="material-symbols-outlined text-[20px]">keyboard_arrow_down</span>
                             </button>
                         }
 
                         {
-                            messages.byChatKey[`direct:${directChatId}`]?.ids.map(messageId => {
+                            chatMessagesState?.ids?.map(messageId => {
                                 const message = messages.entities[messageId];
+                                if (!message) return null;
                                 const sentAt = new Date(`${message.sentAt}`);
 
-                                const otherUser = chats.entities[`direct:${directChatId}`]?.participants?.find(participant => participant._id !== userData._id);
-
-                                // Check if we need a date divider
-                                // const currentDateStr = sentAt.toDateString();
-                                // const nextMessage = currentChatMessages[index + 1];
-                                // const nextDateStr = nextMessage
-                                //     ? new Date(`${nextMessage.sentAt}`).toDateString()
-                                //     : null;
-                                // const showDateDivider = currentDateStr !== nextDateStr;
+                                const otherUser = chats.entities[chatKey]?.participants?.find(participant => participant._id !== userData?._id);
 
                                 return (
                                     <React.Fragment key={messageId}>
-                                        {/* in this ChatBubble is using first instead of Date divider because the scroll is in reverse */}
                                         <ChatBubble
                                             message={message.content}
-                                            isReceived={message.senderId !== userData._id}
-                                            senderAvatar={message.senderId !== userData._id ? otherUser?.avatarUrl : null}
+                                            isReceived={message.senderId !== userData?._id}
+                                            senderAvatar={message.senderId !== userData?._id ? otherUser?.avatarUrl : null}
                                             msgDateTime={sentAt}
                                         />
-                                        {/* {showDateDivider ? (
-                                            <div className="flex justify-center my-4">
-                                                <span
-                                                    className="text-xs font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-white/5 px-3 py-1 rounded-full">
-                                                    {formatedSmartDate({ date: sentAt, showTimeIfToday: false })}
-                                                </span>
-                                            </div>
-                                        ) : null} */}
                                     </React.Fragment>
                                 );
                             })
                         }
-                        <div ref={chatTopRef}>
-                            {/* Intersection Overserver */}
+                        <div
+                            ref={chatTopRef}
+                            style={{ overflowAnchor: 'none' }}
+                            className="w-full flex justify-center py-2 min-h-[1px]"
+                        >
                             {isLoading && !isInitialLoading && (
-                                // <div className="text-center py-2 text-xs text-slate-400">Loading older messages...</div>
-                                < center className='flex items-center justify-center h-screen w-screen' >
-                                    <span className="loader"></span>
-                                </center >
+                                <div className="flex items-center gap-2 text-xs text-slate-400 py-2">
+                                    <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
+                                    <span>Loading older messages...</span>
+                                </div>
+                            )}
+                            {!hasMore && (chatMessagesState?.ids?.length || 0) > 0 && (
+                                <div className="text-xs text-slate-400/60 py-2">
+                                    Beginning of conversation
+                                </div>
                             )}
                         </div>
-
-                        {/* test messages */}
-
-                        {/* <!-- Date Divider --> */}
-                        <div className="flex justify-center my-4">
-                            <span
-                                className="text-xs font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-white/5 px-3 py-1 rounded-full">Today</span>
-                        </div>
-                        {/* <!-- Incoming Message --> */}
-                        <div className="flex items-end gap-3 group">
-                            <div className="bg-center bg-no-repeat bg-cover rounded-full h-8 w-8 shrink-0 mb-1"
-                                data-alt="Sarah's Avatar"
-                                style={{ backgroundImage: `url("https://lh3.googleusercontent.com/aida-public/AB6AXuD6Cldr2VJO0-BK4MZthaGRCv09NqYQcIfEXA95hs76c4Y3DdQPIiOBhihxkRtwxZKh75kTr6_8bfPaR9MT8xjEBxncAIux_X1p2BvDHocKZ2clB8P4jQc6kVuHv5mt2nrQUr5ccUVNpKVUk1B38EKz0QCBq6EM2YKc3z1ETYzpsPWjsRdXq0vCQvxuoxCKY6v8vVouIhhurdsrs3yQrPdoY4Y_txMFuwd2a-FEBPut81_TV8LN9OpRkpbC4Phu7S-80hTqTNfZfXY")` }}>
-                            </div>
-                            <div className="flex flex-col gap-1 max-w-[80%] md:max-w-[60%]">
-                                <div
-                                    className="rounded-2xl rounded-bl-none px-4 py-3 bg-slate-100 dark:bg-[#232f48] text-slate-800 dark:text-white shadow-sm">
-                                    <p className="text-sm leading-relaxed">Hey! Did you get a chance to look at the new design files I
-                                        sent over earlier?</p>
-                                </div>
-                                <span
-                                    className="text-[11px] text-slate-400 dark:text-slate-500 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">09:41
-                                    AM</span>
-                            </div>
-                        </div>
-                        {/* <!-- Incoming Message (Link/Attachment) --> */}
-                        <div className="flex items-end gap-3 group mt-2">
-                            <div className="h-8 w-8 shrink-0 mb-1"></div> {/* Spacer for alignment */}
-                            <div className="flex flex-col gap-1 max-w-[80%] md:max-w-[60%]">
-                                <div
-                                    className="rounded-2xl rounded-bl-none px-4 py-3 bg-slate-100 dark:bg-[#232f48] text-slate-800 dark:text-white shadow-sm flex items-center gap-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-[#2e3b56] transition-colors">
-                                    <div
-                                        className="h-10 w-10 bg-red-100 dark:bg-red-500/20 rounded-lg flex items-center justify-center text-red-500 shrink-0">
-                                        <span className="material-symbols-outlined">picture_as_pdf</span>
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-sm font-semibold truncate">Project_Guidelines_v2.pdf</p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400">2.4 MB</p>
-                                    </div>
-                                    <span className="material-symbols-outlined text-slate-400">download</span>
-                                </div>
-                                <span
-                                    className="text-[11px] text-slate-400 dark:text-slate-500 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">09:42
-                                    AM</span>
-                            </div>
-                        </div>
-                        {/* <!-- Outgoing Message --> */}
-                        <div className="flex items-end gap-3 justify-end group">
-                            <div className="flex flex-col gap-1 items-end max-w-[80%] md:max-w-[60%]">
-                                <div className="rounded-2xl rounded-br-none px-4 py-3 bg-primary text-white shadow-sm">
-                                    <p className="text-sm leading-relaxed">Yes, I'm reviewing them right now. The color palette looks
-                                        amazing! 🔥</p>
-                                </div>
-                                <div className="flex items-center gap-1 mr-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <span className="text-[11px] text-slate-400 dark:text-slate-500">09:45 AM</span>
-                                    <span className="material-symbols-outlined text-[14px] text-primary">done_all</span>
-                                </div>
-                            </div>
-                            {/* <!-- Self Avatar (Optional, often omitted in modern chats but included for symmetry if desired) --> */}
-                            {/* <div className="bg-center bg-no-repeat bg-cover rounded-full h-8 w-8 shrink-0 mb-1" style='background-image: url("https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80");'></div> */}
-                        </div>
-                        {/* <!-- Outgoing Message (Short) --> */}
-                        <div className="flex items-end gap-3 justify-end group -mt-4">
-                            <div className="flex flex-col gap-1 items-end max-w-[80%] md:max-w-[60%]">
-                                <div className="rounded-2xl rounded-tr-sm rounded-br-none px-4 py-3 bg-primary text-white shadow-sm">
-                                    <p className="text-sm leading-relaxed">I have one quick question about the mobile view though.</p>
-                                </div>
-                                <div className="flex items-center gap-1 mr-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <span className="text-[11px] text-slate-400 dark:text-slate-500">09:46 AM</span>
-                                    <span className="material-symbols-outlined text-[14px] text-primary">done_all</span>
-                                </div>
-                            </div>
-                        </div>
-                        {/* <!-- Incoming Typing Indicator --> */}
-                        <div className="flex items-end gap-3">
-                            <div className="bg-center bg-no-repeat bg-cover rounded-full h-8 w-8 shrink-0 mb-1"
-                                data-alt="Sarah's Avatar"
-                                style={{ backgroundImage: `url("https://lh3.googleusercontent.com/aida-public/AB6AXuDsy0Cu1TDJPkT1lQyfnvU2PeTo70XpNOJbwer1VmO4_lR0kIlv0cKpMmjMbEwOjmty0JPFpFB-V-WuC3qJLtBSTG4zdaSH-J27bzQjU-QNIv65CDXQW_zg-AS4Ju90Lk-R3D1Hg9GLYk9UQ7BAE9pUkgV3jdjLAcV1dn7KEw_j1TGUnP1vhzpM-zA7WCaE9nrTvQlLAdQ6k5Kssu7FRlmBu2oWNBtcuubLr6m4WZIGzWukPC24JsTMTj5Ke1SpYRpklUG2pJN37ZU")` }}>
-                            </div>
-                            <div
-                                className="rounded-2xl rounded-bl-none px-4 py-3 bg-slate-100 dark:bg-[#232f48] shadow-sm flex items-center gap-1 h-11">
-                                <span className="block w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
-                                <span className="block w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"
-                                    style={{ animationDelay: '0.1s' }}></span>
-                                <span className="block w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"
-                                    style={{ animationDelay: '0.2s' }}></span>
-                            </div>
-                        </div>
-
-                        <ChatBubble
-                            isReceived={false}
-                            message="Hello"
-                            msgDateTime={new Date(Date.now() - 1000 * 60 * 60 * 24)}
-                        />
-                        <ChatBubble
-                            isReceived={true}
-                            message="Hy User"
-                            msgDateTime={new Date(Date.now() - 1000 * 60 * 60 * 24)}
-                        />
 
                     </div>
                     {/* <!-- Input Area --> */}

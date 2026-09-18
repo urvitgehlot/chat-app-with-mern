@@ -472,67 +472,73 @@ const chatSlice = createSlice({
             // getChatMessagesByPageAsync
             .addCase(getChatMessagesByPageAsync.pending, (state, action) => {
                 const args = action.meta.arg;
-
                 const chatKey = createChatKey(args.chatType, args.chatId);
-                state.messages.byChatKey[chatKey].loading = true;
+                if (!state.messages.byChatKey[chatKey]) {
+                    state.messages.byChatKey[chatKey] = {
+                        ids: [],
+                        typingUsers: [],
+                        hasMore: true,
+                        loading: true,
+                        currentPage: 0,
+                    };
+                } else {
+                    state.messages.byChatKey[chatKey].loading = true;
+                }
             })
             .addCase(getChatMessagesByPageAsync.fulfilled, (state, action) => {
                 const { data, loggedInUserId } = action.payload;
                 const args = action.meta.arg;
-
                 const chatKey = createChatKey(args.chatType, args.chatId);
 
-                if (args.chatType == "direct") {
-                    var otherUser = null;
+                if (args.chatType === "direct") {
+                    const otherUser = state.chats.entities[chatKey]?.participants?.find((participant) => participant._id !== loggedInUserId);
 
-                    // if (state.chats.entities[chatKey] != null) {
-                    otherUser = state.chats.entities[chatKey].participants.find((participant) => participant._id !== loggedInUserId);
+                    if (otherUser) {
+                        state.users.entities[otherUser._id] = otherUser;
+                    }
 
-                    // }
-                    //  else {
-                    //     state.chats.entities[chatKey] = {
-                    //         chatType: "direct",
-                    //         chatId: args.chatId,
-                    //         participants: data.directChat.participants,
-                    //         lastMessageId: null,
-                    //         unreadCount: 0,
-                    //     }
-                    //     otherUser = state.chats.entities[chatKey].participants.find((participant) => participant._id !== loggedInUserId);
-
-                    // }
-
-                    state.users.entities[otherUser._id] = otherUser;
+                    if (!state.messages.byChatKey[chatKey]) {
+                        state.messages.byChatKey[chatKey] = {
+                            ids: [],
+                            typingUsers: [],
+                            hasMore: true,
+                            loading: false,
+                            currentPage: 0,
+                        };
+                    }
 
                     state.messages.byChatKey[chatKey].loading = false;
-                    state.messages.byChatKey[chatKey].currentPage = args.page ?? 1;
+                    const currentPage = Number(args.page) || 1;
+                    state.messages.byChatKey[chatKey].currentPage = currentPage;
 
-                    data.messages.forEach(message => {
-                        if (args.page == 1 && state.chats.entities[chatKey].lastMessageId == message._id) {
-                            return;
-                        }
-                        if (state.messages.entities[message._id] == null) {
-                            state.messages.byChatKey[chatKey].ids.push(message._id);
+                    if (Array.isArray(data.messages) && data.messages.length > 0) {
+                        data.messages.forEach(message => {
+                            if (currentPage === 1 && state.chats.entities[chatKey]?.lastMessageId === message._id && state.messages.byChatKey[chatKey].ids.includes(message._id)) {
+                                return;
+                            }
+                            if (!state.messages.byChatKey[chatKey].ids.includes(message._id)) {
+                                state.messages.byChatKey[chatKey].ids.push(message._id);
+                            }
                             state.messages.entities[message._id] = {
                                 ...message,
                                 sendByMe: message.senderId === loggedInUserId,
-                            }
-                        }
-                    });
-
-
-                    if (data.total == (args.page ?? 1) * (args.limit ?? 10)) {
-                        state.messages.byChatKey[chatKey].hasMore = false;
-                    } else {
-                        state.messages.byChatKey[chatKey].hasMore = true;
+                            };
+                        });
                     }
 
-                    state.chats.entities[chatKey].lastMessageId = data.messages[0]._id;
-                    state.chats.entities[chatKey].unreadCount = 0;
+                    const limit = Number(args.limit) || 20;
+                    const totalPages = data.totalPages ?? Math.ceil((data.total || 0) / limit);
+                    const hasMore = Array.isArray(data.messages) && data.messages.length > 0 && currentPage < totalPages;
+                    state.messages.byChatKey[chatKey].hasMore = hasMore;
 
-                    state.currentChat = { user: { ...otherUser }, chatId: args.chatId, chatType: args.chatType };
+                    if (currentPage === 1 && Array.isArray(data.messages) && data.messages.length > 0 && state.chats.entities[chatKey]) {
+                        state.chats.entities[chatKey].lastMessageId = data.messages[0]._id;
+                        state.chats.entities[chatKey].unreadCount = 0;
+                    }
 
-                } else {
-
+                    if (otherUser) {
+                        state.currentChat = { user: { ...otherUser }, chatId: args.chatId, chatType: args.chatType };
+                    }
                 }
             })
             .addCase(getChatMessagesByPageAsync.rejected, (state, action) => {
@@ -548,7 +554,7 @@ const chatSlice = createSlice({
                         hasMore: false,
                         loading: false,
                         error: action.payload,
-                    }
+                    };
                 }
             })
 

@@ -39,9 +39,10 @@ api.interceptors.response.use(
         // If the error is 401 and we haven't already retried this request
         if (
             error.response?.status === 401 &&
-            !originalRequest._retry &&
-            !originalRequest.url.includes('/users/refresh-token') &&
-            !originalRequest.url.includes('/users/logout')
+            !originalRequest._retry
+            //  &&
+            // !originalRequest.url.includes('/users/refresh-token') &&
+            // !originalRequest.url.includes('/users/logout')
         ) {
 
             // if (error.response?.status === 401 && !originalRequest._retry && refreshToken) {

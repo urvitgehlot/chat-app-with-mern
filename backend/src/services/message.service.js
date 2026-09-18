@@ -65,3 +65,67 @@ export const createMessage = async ({
         // TODO: handle group chat message creation
     }
 }
+
+export const getMessagesByPagination = async ({
+    chatId,
+    chatType,
+    limit = 20,
+    page = 1
+}) => {
+
+    if (!chatId || !chatType || (chatType !== "direct" && chatType !== "group")) {
+        throw new ApiError(400, "Chat Id and Chat Type are required");
+    }
+    var directChat;
+
+    if (chatType === "direct") {
+        directChat = await DirectChat.findById(chatId)
+            .populate("participants", "_id displayName username avatarUrl lastActiveAt");
+    }
+    else {
+
+    }
+
+    const pipeline = [
+        {
+            $match: {
+                directChat: new mongoose.Types.ObjectId(chatId),
+                chatType: "direct",
+            }
+        },
+        {
+            $sort: {
+                sentAt: -1,
+            }
+        },
+        {
+            $facet: {
+                messages: [
+                    {
+                        $skip: (page - 1) * limit,
+                    },
+                    {
+                        $limit: parseInt(limit),
+                    },
+                ],
+                totalCount: [
+                    {
+                        $count: "count"
+                    }
+                ],
+            }
+        }
+    ];
+
+    const messages = await Message.aggregate(pipeline);
+
+    const total = messages[0].totalCount[0]?.count || 0;
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+        messages: messages[0]['messages'],
+        directChat: directChat,
+        total: total,
+        totalPages: totalPages
+    };
+}
