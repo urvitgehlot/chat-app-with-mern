@@ -55,12 +55,13 @@ db.version(1).stores({
         [chatKey+createdAt],
         chatKey,
         senderId,
-        createdAt,
         content,
         chatType,
         status,
         sendByMe,
-        tempId     
+        tempId,
+        sentAt,
+        createdAt
     `,
     users: `
         _id

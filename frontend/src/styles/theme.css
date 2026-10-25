@@ -1,45 +1,96 @@
 :root {
-    --app-bg: oklch(0.2003 0.0259 263.72);
-    --app-bg-surface: oklch(0.2348 0.0314 262.56);
+    /* Refined Deep Charcoal SaaS Palette */
+    --app-bg: #090b10;
+    --app-bg-surface: #0e121a;
+    --app-bg-card: #141923;
+    --app-bg-elevated: #1a202d;
+    --app-bg-muted: #202737;
+    --app-bg-hover: #171d28;
+    --app-bg-active: #222b3b;
 
-    /* --primary: oklch(0.6799 0.172 254.69); */
-    --primary: oklch(0.5677 0.2072 262.13);
-    /* --secondary: oklch(0.6799 0.172 254.69); */
+    /* Accent Palette - Precision Indigo / Violet */
+    --primary: #4f46e5;
+    --primary-hover: #4338ca;
+    --primary-light: rgba(79, 70, 229, 0.12);
+    --primary-glow: rgba(79, 70, 229, 0.25);
 
+    /* Text Hierarchy */
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --text-disabled: #475569;
 
-    --text-primary: oklch(1 0 0);
-    --text-secondary: oklch(0.7177 0.0579 264.61);
+    /* Borders & Dividers */
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-color: rgba(255, 255, 255, 0.09);
+    --border-focus: rgba(99, 102, 241, 0.6);
 
-    --border-color: oklch(0.388 0.0642 262.94);
+    /* Statuses */
+    --status-online: #10b981;
+    --status-away: #f59e0b;
+    --status-offline: #64748b;
+    --danger: #ef4444;
+    --danger-hover: #dc2626;
+    --danger-muted: rgba(239, 68, 68, 0.12);
 }
 
 .dark {
-    --app-bg: oklch(0.2003 0.0259 263.72);
-    --app-bg-surface: oklch(0.2348 0.0314 262.56);
+    --app-bg: #090b10;
+    --app-bg-surface: #0e121a;
+    --app-bg-card: #141923;
+    --app-bg-elevated: #1a202d;
+    --app-bg-muted: #202737;
+    --app-bg-hover: #171d28;
+    --app-bg-active: #222b3b;
 
-    --primary: oklch(0.6799 0.172 254.69);
-    /* --secondary: oklch(0.6799 0.172 254.69); */
+    --primary: #4f46e5;
+    --primary-hover: #4338ca;
+    --primary-light: rgba(79, 70, 229, 0.12);
+    --primary-glow: rgba(79, 70, 229, 0.25);
 
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --text-disabled: #475569;
 
-    --text-primary: oklch(1 0 0);
-    --text-secondary: oklch(0.7177 0.0579 264.61);
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-color: rgba(255, 255, 255, 0.09);
+    --border-focus: rgba(99, 102, 241, 0.6);
 
-    --border-color: oklch(0.388 0.0642 262.94);
-
+    --status-online: #10b981;
+    --status-away: #f59e0b;
+    --status-offline: #64748b;
+    --danger: #ef4444;
+    --danger-hover: #dc2626;
+    --danger-muted: rgba(239, 68, 68, 0.12);
 }
 
 @theme {
     --color-bg-app: var(--app-bg);
-    /* --color-bg-surface-color: var(--app-bg-surface-color); */
     --color-bg-surface: var(--app-bg-surface);
+    --color-bg-card: var(--app-bg-card);
+    --color-bg-elevated: var(--app-bg-elevated);
+    --color-bg-muted: var(--app-bg-muted);
+    --color-bg-hover: var(--app-bg-hover);
+    --color-bg-active: var(--app-bg-active);
 
     --color-primary: var(--primary);
+    --color-primary-hover: var(--primary-hover);
+    --color-primary-light: var(--primary-light);
 
     --color-text-primary: var(--text-primary);
     --color-text-secondary: var(--text-secondary);
+    --color-text-muted: var(--text-muted);
+    --color-text-disabled: var(--text-disabled);
 
     --color-border: var(--border-color);
+    --color-border-subtle: var(--border-subtle);
 
-    /* Smooth transitions */
-    /* --transition-border: border-color 0.2s ease, box-shadow 0.2s ease; */
+    --color-status-online: var(--status-online);
+    --color-danger: var(--danger);
+
+    /* Backwards compatibility aliases */
+    --color-sidebar-dark: var(--app-bg-surface);
+    --color-surface-dark: var(--app-bg-card);
+    --color-background-dark: var(--app-bg);
 }

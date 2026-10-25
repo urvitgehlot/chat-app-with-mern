@@ -1,4 +1,4 @@
-import {v2 as cloudinary}  from "cloudinary"
+import { v2 as cloudinary } from "cloudinary"
 import fs from "fs"
 
 cloudinary.config({
@@ -8,44 +8,45 @@ cloudinary.config({
 })
 
 function extractPublicId(url) {
-  const cleanUrl = url.split('?')[0];                     // remove query params
-  const noExtension = cleanUrl.slice(0, cleanUrl.lastIndexOf('.'));
+    const cleanUrl = url.split('?')[0];                     // remove query params
+    const noExtension = cleanUrl.slice(0, cleanUrl.lastIndexOf('.'));
 
-  const parts = noExtension.split("/upload/");
-  return parts.length > 1 ? parts[1] : null;
+    const parts = noExtension.split("/upload/");
+    return parts.length > 1 ? parts[1] : null;
 }
 
 
 const uploadOnCloudinary = async (localFilePath) => {
-    if(!localFilePath) return null
+    if (!localFilePath) return null
     try {
         const response = await cloudinary.uploader.upload(localFilePath, {
-            resource_type: "auto"
+            resource_type: "auto",
+            // folder: 'chat-app-with-mern'
         })
         fs.unlinkSync(localFilePath)
         return response
     } catch (error) {
-        console.error("Error while uploading on cloudinary: ",error);
+        console.error("Error while uploading on cloudinary: ", error);
         fs.unlinkSync(localFilePath)
         return null
     }
 }
 
 const deleteOnCloudinary = async (fileUrl) => {
-    if(!fileUrl) return null
+    if (!fileUrl) return null
 
     try {
-      const publicId = extractPublicId(fileUrl);
-      const response = await cloudinary.uploader.destroy(publicId);
+        const publicId = extractPublicId(fileUrl);
+        const response = await cloudinary.uploader.destroy(publicId);
 
-      return response;
+        return response;
     } catch (error) {
-        console.log("Error while deleting on cloudinary: ",error);
+        console.log("Error while deleting on cloudinary: ", error);
         return null;
     }
 }
 
 export {
-  uploadOnCloudinary,
-  deleteOnCloudinary,
+    uploadOnCloudinary,
+    deleteOnCloudinary,
 }

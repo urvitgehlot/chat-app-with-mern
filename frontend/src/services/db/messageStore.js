@@ -3,6 +3,25 @@ import db from "./db";
 import { createChatKey } from "../../utils/chatKey";
 
 
+// const messageTemplate = {
+//     _id,
+//     chatKey,
+//     senderId,
+//     createdAt,
+//     content,
+//     chatType,
+//     status,
+//     sendByMe,
+//     tempId,
+//     isDeleted,
+//     isForwarded,
+//     isEdited,
+//     replyToMessageId,
+//     sentAt,
+//     createdAt
+// }
+
+
 export const messageStore = {
     async bulkPut({ messages = [] }) {
         return db.messages.bulkPut(messages);

@@ -13,24 +13,32 @@ const runSeed = async () => {
         console.log("Deleting Old Data...");
         await mongoose.connection.db.dropDatabase();
 
+        // Sync/build fresh indexes:
+        await mongoose.syncIndexes();
+
         console.log("Seeding users...");
+        // const users = await generateUsers(10);
         const users = await generateUsers(20);
         console.log("Users seeded successfully!");
 
         console.log("Seeding Direct Chats...");
+        // const directChats = await generateDirectChats(users, 20);
         const directChats = await generateDirectChats(users, 200);
         console.log("Direct Chats seeded successfully!");
 
         console.log("Seeding Messages...");
-        const messages = await generateMessages(directChats, 1000000);
+        // const messages = await generateMessages(directChats, 1000);
+        const messages = await generateMessages(directChats, 10000000);
         console.log("Messages seeded successfully!");
 
         console.log("Seeding Groups...");
+        // const groups = await generateGroups(users, 5);
         const groups = await generateGroups(users, 10);
         console.log("Groups seeded successfully!");
 
         console.log("Seeding Group Memberships...");
         for (const group of groups) {
+            // const randomUsersCount = Math.floor(Math.random() * 2) + 1;
             const randomUsersCount = Math.floor(Math.random() * 5) + 1;
             console.log("randomUsersCount: ", randomUsersCount);
 

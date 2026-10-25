@@ -119,7 +119,7 @@ const initialState = {
 
         entities: {},
 
-        loading: true,
+        loading: false,
 
         error: null,
     },
@@ -140,89 +140,81 @@ const initialState = {
 }
 
 
-export const sendMessageAsync = createAsyncThunk("chat/sendMessage", async (data, { rejectWithValue, getState }) => {
+export const sendMessageAsync = createAsyncThunk('chat/sendMessage', async (data, { rejectWithValue, getState }) => {
     try {
-        const chatKey = createChatKey(data.chatType, data.chatId);
+        console.log("data: ", data.message);
+        const message = data.message;
+        const chatKey = createChatKey(message.chatType, message.chatId);
 
-        const message = {
-            _id: data.tempId,
-            tempId: data.tempId,
-            content: data.content,
-            chatType: data.chatType,
-            chatId: data.chatId,
-            senderId: data.senderId,
-            replyToMessageId: data.replyToMessageId,
-            status: MESSAGE_STATUS.SENDING,
-            sendByMe: data.sendByMe,
-            sentTo: data.sentTo._id,
-            createdAt: new Date().toISOString(),
-            isRead: false,
-            isDelivered: false,
-        }
+        const validatedMessage = validateAndCreateMessage({
+            _id: message.tempId,
+            tempId: message.tempId,
+            content: message.content,
+            chatType: message.chatType,
+            chatId: message.chatId,
+            senderId: message.senderId,
+            sentTo: message.sentTo,
+            sendByMe: message.sendByMe,
+            replyToMessageId: message.replyToMessageId,
+            sentAt: message.sentAt,
+            isRead: message.isRead,
+            isDelivered: message.isDelivered,
+        });
 
-        const isChatExistsInDexie = await chatStore.getById(chatKey);
+        const isChatExistsInDexie = await chatStore.getById(chatKey)
+
         if (!isChatExistsInDexie) {
             await chatStore.put({
                 _id: chatKey,
-                chatType: data.chatType,
-                chatId: data.chatId,
-                lastMessageId: message.tempId,
-                updatedAt: message.createdAt,
-                unreadCount: data.sendByMe ? 0 : 1,
-            })
+                chatType: message.chatType,
+                chatId: message.chatId,
+                lastMessageId: validatedMessage.tempId,
+                createdAt: validatedMessage.createdAt,
+                updatedAt: validatedMessage.createdAt,
+                unreadCount: message.sendByMe ? 0 : 1,
+                // TODO: isko dekhna hai baad me isme gadbad hai
+                participants: message.chatType == 'direct' ? [[message.senderId, message.sentTo._id]].toSorted() : null,
+            });
         } else {
             await chatStore.updateLastMessage({
                 chatKey: chatKey,
-                lastMessageId: message.tempId,
+                lastMessageId: validatedMessage.tempId,
                 unreadCount: 0,
             });
         }
 
-        if (data.chatType == 'direct') {
-            const isUserCached = await userStore.getById(data.sentTo._id);
+        if (message.chatType == 'direct') {
+            const isUserCached = await userStore.getById(message.sentTo._id);
             if (!isUserCached) {
                 await userStore.put({
-                    ...data.sentTo,
+                    ...message.sentTo,
                 })
             }
         }
 
-        await messageStore.put(message);
+        await messageStore.put(validatedMessage);
 
-        return {
-            message
-        };
+        if (getState().app.isOnline) {
+            const response = await chatAPI.sendMessage({ ...validatedMessage, sentTo: validatedMessage.sentTo._id });
+            console.log("response: ", response);
+            return response;
+        }
+        else {
+            // push message into queued messages to send it later
 
+            return {
+                validatedMessage,
+                userOffline: true,
+            };
+        }
     } catch (error) {
+        // TODO: remove if already stored in dexie
         console.error("failed to cache message", error);
         return rejectWithValue(error.response.data.message || "send message failed");
     }
+
 });
 
-
-export const messageSentAsync = createAsyncThunk("chat/messageSent", async (payloadData, { rejectWithValue, getState }) => {
-    try {
-        const user = getState().auth.userData;
-        const { tempId, chat, isNewChat, message } = payloadData;
-
-        if (tempId) {
-            messageStore.confirmMessage(tempId, {
-                _id: message._id,
-                ...message,
-                sendByMe: true,
-                directChat: message.directChat || payloadData.chatId,
-            }).catch(err => console.error("Dexie confirm error: ", err));
-        }
-
-        return {
-            currentUser: user,
-            tempId,
-            ...payloadData
-        };
-    } catch (error) {
-        return rejectWithValue(error.response.data.message || "send message failed");
-    }
-})
 
 export const receiveMessageAsync = createAsyncThunk("chat/receiveMessage", async (data, { rejectWithValue }) => {
     try {
@@ -279,6 +271,13 @@ export const getRecentChatsAsync = createAsyncThunk('chat/getRecentChats', async
         return response;
     } catch (error) {
         return rejectWithValue(error.response.data.message || "get recent chats failed");
+    }
+}, {
+    condition: (_, { getState }) => {
+        const { chats } = getState().chat;
+        console.log('Chats inside getRecentChatAsync Condition: ', chats);
+        if (chats?.loading) return false;
+        return true;
     }
 })
 
@@ -558,87 +557,131 @@ const chatSlice = createSlice({
                 }
             })
 
-            .addCase(sendMessageAsync.fulfilled, (state, action) => {
-                const { message } = action.payload;
+            .addCase(sendMessageAsync.pending, (state, action) => {
+                // steps
+                // 1. create validated and plain message with tempId
+                // 2. 
+                // 3.
+
+                console.log("idhar toh aaya")
+
+                // const { message } = action.payload;
+                const { message } = action.meta.arg;
                 const chatKey = createChatKey(message.chatType, message.chatId);
 
-                console.log("Send Message tempId: ", message.tempId)
-
-                if (!state.messages.byChatKey[chatKey]) {
-                    state.messages.byChatKey[chatKey] = {
-                        ids: [message.tempId],
-                        typingUsers: [],
-                        hasMore: true,
-                        loading: false,
-                        error: null,
-                    }
-                } else {
-                    state.messages.byChatKey[chatKey].ids.unshift(message.tempId);
-                }
-
-                // if (!state.chats.entities[chatKey]) {
-                //     state.chats.entities[chatKey] = {
-                //         chatType: message.chatType,
-                //         chatId: message.chatId,
-                //         lastMessageId: message._id,
-                //         // participants: 
-                //         unreadCount: 0,
-                //     }
-                //     state.messages.byChatKey[chatKey] = {
-                //         ids: [],
-                //         typingUsers: [],
-                //         hasMore: false,
-                //         loading: false,
-                //         error: null,
-                //     }
-                // } else {
-                // state.chats.entities[chatKey].lastMessageId = message._id;
-                // }
-
-                // state.messages.byChatKey[chatKey].ids.unshift(message.tempId);
-                state.messages.entities[message.tempId] = message;
-
-                state.chats.entities[chatKey].lastMessageId = message.tempId;
-                state.chats.entities[chatKey].unreadCount = 0;
-
-                // state.queuedMessages = state.queuedMessages.filter(id => id !== message.tempId);
-            })
-
-            // messageSentAsync ( Message Sent Acknowledgement)
-            .addCase(messageSentAsync.fulfilled, (state, action) => {
-                const payloadData = action.payload;
-                const chatKey = createChatKey(payloadData.message.chatType, payloadData.chat._id);
-                console.log("Payload data of message sent ack: ", payloadData);
-
-                const message = {
-                    _id: payloadData.message._id,
-                    content: payloadData.message.content,
-                    chatType: payloadData.message.chatType,
-                    chatId: payloadData.chat._id,
-                    senderId: payloadData.message.senderId._id,
+                const validatedMessage = validateAndCreateMessage({
+                    _id: message.tempId,
+                    tempId: message.tempId,
+                    content: message.content,
+                    chatType: message.chatType,
+                    chatId: message.chatId,
+                    senderId: message.senderId,
+                    sentTo: message.sentTo,
                     sendByMe: true,
-                    replyToMessageId: payloadData.message.replyToMessageId,
-                    sentAt: payloadData.message.sentAt,
+                    replyToMessageId: message.replyToMessageId,
+                    sentAt: Date.now(),
                     isRead: false,
                     isDelivered: false,
+                })
+
+                state.messages.byChatKey[chatKey].ids.unshift(validatedMessage._id);
+                state.messages.entities[validatedMessage._id] = validatedMessage;
+
+                state.chats.entities[chatKey].lastMessageId = validatedMessage._id;
+                // state.chats.entities[chatKey].unreadCount = 0;
+            })
+            .addCase(sendMessageAsync.fulfilled, (state, action) => {
+                const { tempId } = action.meta.arg;
+                console.log(action);
+                const payloadData = action.payload.data;
+                const { message, directChat, group, attachments, isNewChat } = payloadData;
+                let chatKey;
+                let chatId;
+                if (payloadData.directChat) {
+                    chatKey = createChatKey(payloadData.message.chatType, payloadData.directChat._id);
+                    chatId = payloadData.directChat._id;
+                } else {
+                    chatKey = createChatKey(payloadData.message.chatType, payloadData.group._id);
+                    chatId = payloadData.group._id;
                 }
 
-                if (state.chats.entities[chatKey]) {
-                    console.log("message sent ack when chat is not present in redux store");
-                    // state.chats.id.unshift(chatKey);
-                    state.chats.entities[chatKey].lastMessageId = message._id;
+                if (payloadData.message.chatType == 'direct') {
 
-                    console.log(`payload temp id: ${payloadData.tempId}`)
-                    console.log(`message ids before filtering: ${state.messages.byChatKey[chatKey].ids}`)
-                    // state.messages.byChatKey[chatKey].ids = state.messages.byChatKey[chatKey].ids.filter(id => id !== payloadData.tempId);
-                    console.log(`message ids after filtering: ${state.messages.byChatKey[chatKey].ids}`)
-                    state.messages.byChatKey[chatKey].ids.unshift(message._id);
+                    const sentTo = directChat.participants.find((participant) => participant._id !== message.senderId._id);
+
+                    const validatedMessage = validateAndCreateMessage({
+                        _id: message._id,
+                        chatType: message.chatType,
+                        content: message.content,
+                        chatId: chatId,
+                        senderId: message.senderId._id,
+                        sentTo: sentTo,
+                        sendByMe: true,
+                        replyToMessageId: message.replyToMessageId,
+                        sentAt: message.sentAt,
+                        isRead: false,
+                        isDelivered: true,
+                    });
+
+                    state.messages.entities[message._id] = validatedMessage;
 
 
-                    state.messages.entities[message._id] = message;
-                    // delete state.messages.entities[payloadData.tempId];
+                    const index = state.messages.byChatKey[chatKey].ids.indexOf(tempId);
 
-                    state.queuedMessages = state.queuedMessages.filter(id => id !== payloadData.tempId);
+                    if (index !== -1) {
+                        state.messages.byChatKey[chatKey].ids[index] = message._id;
+                    }
+
+                    state.chats.entities[chatKey].lastMessageId = validatedMessage._id;
+                    // TODO: unread count needs to be managed
+                    // state.chats.entities[chatKey].unreadCount = message.unreadCount;
+
+                } else {
+                    const validatedMessage = validateAndCreateMessage({
+                        _id: message._id,
+                        chatType: message.chatType,
+                        content: message.content,
+                        chatId: chatId,
+                        senderId: message.senderId._id,
+                        sendByMe: true,
+                        sentTo: message.sentTo,
+                        replyToMessageId: message.replyToMessageId,
+                        sentAt: message.sentAt,
+                        isRead: false,
+                        isDelivered: false,
+                    });
+
+                    state.messages.entities[validatedMessage._id] = validatedMessage;
+
+                    const index = state.messages.byChatKey[chatKey].ids.indexOf(tempId);
+
+                    if (index !== -1) {
+                        state.messages.byChatKey[chatKey].ids[index] = validatedMessage._id;
+                    }
+
+                    state.chats.entities[chatKey].lastMessageId = validatedMessage._id;
+                    // TODO: unread count needs to be managed
+                    // state.chats.entities[chatKey].unreadCount = payloadData.group.unreadCount;
+                }
+
+                state.messages.entities[tempId] = undefined;
+                delete state.messages.entities[tempId];
+            })
+            .addCase(sendMessageAsync.rejected, (state, action) => {
+
+                console.error('rejected: ', action)
+                const { tempId, chatType, chatId } = action.meta.arg || {};
+                const chatKey = createChatKey(chatType, chatId);
+                const errorMessage = action.payload || action.error?.message || "Failed to send message";
+
+                if (state.messages.entities[tempId]) {
+                    state.messages.entities[tempId].status = MESSAGE_STATUS.FAILED;
+                    state.messages.entities[tempId].error = errorMessage;
+                }
+
+                if (state.messages.byChatKey[chatKey]) {
+                    state.messages.byChatKey[chatKey].loading = false;
+                    state.messages.byChatKey[chatKey].error = errorMessage;
                 }
             })
 
@@ -730,5 +773,5 @@ const chatSlice = createSlice({
     }
 });
 
-export const { addMessage, sendMessage, joinChat, messageReceived } = chatSlice.actions;
+export const { addMessage, joinChat, closeChat, messageReceived } = chatSlice.actions;
 export default chatSlice.reducer;

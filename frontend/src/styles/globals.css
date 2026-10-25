@@ -1,45 +1,139 @@
+@import "tailwindcss";
+
 * {
-    font-family: "Plus Jakarta Sans", "Noto Sans", "sans-serif";
+    font-family: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
-/* Smooth transitions */
-.input-transition {
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+/* Glassmorphism & Surface utilities */
+.glass-panel {
+    background: rgba(14, 18, 26, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
 }
 
+.glass-card {
+    background: rgba(20, 25, 35, 0.65);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--border-subtle);
+}
+
+/* Skeleton loader with subtle shimmer */
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.03) 25%,
+        rgba(255, 255, 255, 0.08) 37%,
+        rgba(255, 255, 255, 0.03) 63%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s ease-in-out infinite;
+    border-radius: 8px;
+}
+
+/* Minimal spinner */
 .loader {
-    width: 48px;
-    height: 48px;
-    border: 5px solid #FFF;
-    border-bottom-color: transparent;
+    width: 32px;
+    height: 32px;
+    border: 2.5px solid rgba(255, 255, 255, 0.15);
+    border-top-color: var(--primary);
     border-radius: 50%;
     display: inline-block;
     box-sizing: border-box;
-    animation: rotation 1s linear infinite;
+    animation: rotation 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 @keyframes rotation {
     0% {
         transform: rotate(0deg);
     }
-
     100% {
         transform: rotate(360deg);
     }
 }
 
-/* hide scrollbar but keep scrolling */
+/* Smooth Transitions */
+.input-transition {
+    transition: border-color 0.15s ease-out, box-shadow 0.15s ease-out, background-color 0.15s ease-out;
+}
+
+/* Custom Refined Scrollbar */
 .scrollbar-hide::-webkit-scrollbar {
-    /* display: none; */
-    width: 6px;
+    width: 5px;
+    height: 5px;
+}
+
+.scrollbar-hide::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 .scrollbar-hide::-webkit-scrollbar-thumb {
-    background-color: rgba(100, 100, 100, 0.3);
+    background-color: rgba(255, 255, 255, 0.12);
     border-radius: 9999px;
+    transition: background-color 0.2s ease;
+}
+
+.scrollbar-hide::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.24);
 }
 
 .scrollbar-hide {
     scrollbar-width: thin;
-    scrollbar-color: rgba(100, 100, 100, 0.3) transparent;
+    scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+
+/* Subtle Popover & Dropdown Animation */
+@keyframes popupFade {
+    from {
+        opacity: 0;
+        transform: scale(0.96) translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.animate-popup {
+    animation: popupFade 160ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Message Hover Action Bar animation */
+@keyframes actionSlide {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-actions {
+    animation: actionSlide 140ms ease-out forwards;
+}
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }

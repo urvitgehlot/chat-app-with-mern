@@ -1,13 +1,29 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react';
+import { Eye, EyeOff, AlertCircle, ArrowRight, ArrowLeft, Mail, RotateCw, CheckCircle2, KeyRound } from 'lucide-react';
+import { useAuth } from '../useAuth';
 
-function AuthForm({ type, submitHandler, loading, error, passwordError }) {
+function AuthForm({ type, submitHandler, sendOtp: propSendOtp, loading, error, passwordError }) {
+    const { sendOtp: hookSendOtp } = useAuth();
+    const onSendOtp = propSendOtp || hookSendOtp;
 
     const [formData, setFormData] = useState({
-        displayName: "",
         email: "",
         password: "",
         "confirm-password": ""
     });
+
+    const [showPassword, setShowPassword] = useState(false);
+
+    // Signup OTP Step state: 1 = Details, 2 = OTP Verification
+    const [step, setStep] = useState(1);
+    const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
+    const [verificationToken, setVerificationToken] = useState("");
+    const [sendingOtp, setSendingOtp] = useState(false);
+    const [resendTimer, setResendTimer] = useState(0);
+    const [localError, setLocalError] = useState(null);
+    const [otpSentNotice, setOtpSentNotice] = useState(false);
+
+    const inputRefs = useRef([]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -15,119 +31,453 @@ function AuthForm({ type, submitHandler, loading, error, passwordError }) {
             ...prev,
             [name]: value,
         }));
+        if (localError) setLocalError(null);
     };
 
-    const [showPassword, setShowPassword] = useState(false);
-
+    // Reset state when switching between login and signup
     useEffect(() => {
         setFormData({
-            displayName: "",
             email: "",
             password: "",
             "confirm-password": ""
         });
+        setShowPassword(false);
+        setStep(1);
+        setOtpDigits(['', '', '', '', '', '']);
+        setVerificationToken("");
+        setLocalError(null);
+        setOtpSentNotice(false);
+        setResendTimer(0);
     }, [type]);
 
-    return (
-        <form className="flex flex-col gap-5" onSubmit={(e) => submitHandler(e, formData)}>
-            {/* <!-- Full Name Input --> */}
-            {type === 'signup' && (
-                <label className="flex flex-col w-full">
-                    <p className="text-white text-sm font-medium leading-normal pb-2">Full Name</p>
-                    <input
-                        className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-white bg-bg-surface border border-border outline-none h-14 placeholder:text-text-secondary p-[15px] text-base font-normal leading-normal input-transition focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                        placeholder="Urvit Gehlot" type="text"
-                        name='displayName'
-                        value={formData.displayName}
-                        onChange={handleChange}
-                        required
-                    />
-                </label>
-            )
+    // Countdown timer matching backend token bucket rate limiter
+    useEffect(() => {
+        let interval = null;
+        if (resendTimer > 0) {
+            interval = setInterval(() => {
+                setResendTimer((prev) => {
+                    if (prev <= 1) {
+                        clearInterval(interval);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [resendTimer]);
+
+    // Auto-focus the first OTP input when entering step 2
+    useEffect(() => {
+        if (step === 2) {
+            inputRefs.current[0]?.focus();
+        }
+    }, [step]);
+
+    // Handle Send OTP (Step 1 -> Step 2)
+    const handleSendOtp = async (e) => {
+        if (e) e.preventDefault();
+        setLocalError(null);
+
+        // Validation for step 1
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!formData.email.trim() || !emailRegex.test(formData.email.trim())) {
+            setLocalError("Please enter a valid email address.");
+            return;
+        }
+
+        if (!formData.password || formData.password.length < 6) {
+            setLocalError("Password must be at least 6 characters.");
+            return;
+        }
+
+        if (formData.password !== formData["confirm-password"]) {
+            setLocalError("Passwords do not match.");
+            return;
+        }
+
+        setSendingOtp(true);
+        try {
+            const res = await onSendOtp({
+                email: formData.email.trim().toLowerCase(),
+            });
+
+            const token = res?.data?.verificationToken;
+            if (token) {
+                setVerificationToken(token);
+                setStep(2);
+                setResendTimer(180);
+                setOtpSentNotice(true);
+                setTimeout(() => setOtpSentNotice(false), 4000);
+            } else {
+                setLocalError("Failed to receive verification token from server.");
             }
-            {/* <!-- Email Input --> */}
-            <label className="flex flex-col w-full">
-                <p className="text-white text-sm font-medium leading-normal pb-2">Email</p>
-                <input
-                    className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-white bg-bg-surface border border-border outline-none h-14 placeholder:text-text-secondary p-[15px] text-base font-normal leading-normal input-transition focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                    placeholder="example@email.com" type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                />
-            </label>
-            {/* <!-- Password Input --> */}
-            <label className="flex flex-col w-full">
-                <div className="flex justify-between items-center pb-2">
-                    <p className="text-white text-sm font-medium leading-normal">Password</p>
-                </div>
-                <div className="flex w-full flex-1 items-stretch rounded-lg relative">
-                    <input
-                        className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-white bg-bg-surface border border-border h-14 placeholder:text-text-secondary p-[15px] pr-12 text-base font-normal leading-normal input-transition focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                        placeholder="Enter your password" type={showPassword ? "text" : "password"}
-                        name="password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        required
-                    />
-                    <div
-                        className="text-text-secondary flex items-center justify-center absolute right-0 top-0 bottom-0 pr-4 cursor-pointer hover:text-white transition-colors">
-                        <span className="material-symbols-outlined text-[20px]"
-                            onClick={() => {
-                                setShowPassword(!showPassword);
-                            }} >
-                            {showPassword ?
-                                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" className='fill-border'><path d="m644-428-58-58q9-47-27-88t-93-32l-58-58q17-8 34.5-12t37.5-4q75 0 127.5 52.5T660-500q0 20-4 37.5T644-428Zm128 126-58-56q38-29 67.5-63.5T832-500q-50-101-143.5-160.5T480-720q-29 0-57 4t-55 12l-62-62q41-17 84-25.5t90-8.5q151 0 269 83.5T920-500q-23 59-60.5 109.5T772-302Zm20 246L624-222q-35 11-70.5 16.5T480-200q-151 0-269-83.5T40-500q21-53 53-98.5t73-81.5L56-792l56-56 736 736-56 56ZM222-624q-29 26-53 57t-41 67q50 101 143.5 160.5T480-280q20 0 39-2.5t39-5.5l-36-38q-11 3-21 4.5t-21 1.5q-75 0-127.5-52.5T300-500q0-11 1.5-21t4.5-21l-84-82Zm319 93Zm-151 75Z" /></svg>
-                                :
-                                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" className='fill-border'><path d="M480-320q75 0 127.5-52.5T660-500q0-75-52.5-127.5T480-680q-75 0-127.5 52.5T300-500q0 75 52.5 127.5T480-320Zm0-72q-45 0-76.5-31.5T372-500q0-45 31.5-76.5T480-608q45 0 76.5 31.5T588-500q0 45-31.5 76.5T480-392Zm0 192q-146 0-266-81.5T40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200Zm0-300Zm0 220q113 0 207.5-59.5T832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280Z" /></svg>
-                            }
-                        </span>
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || err.message || "Failed to send verification code. Please try again.";
+            setLocalError(errorMsg);
+            const retryAfter = err.response?.data?.retryAfter;
+            if (retryAfter && typeof retryAfter === "number") {
+                setResendTimer(retryAfter);
+            }
+        } finally {
+            setSendingOtp(false);
+        }
+    };
+
+    // Handle Resend OTP
+    const handleResendOtp = async () => {
+        if (resendTimer > 0 || sendingOtp) return;
+        setSendingOtp(true);
+        setLocalError(null);
+
+        try {
+            const res = await onSendOtp({
+                email: formData.email.trim().toLowerCase(),
+            });
+
+            const token = res?.data?.verificationToken;
+            if (token) {
+                setVerificationToken(token);
+                setOtpDigits(['', '', '', '', '', '']);
+                setResendTimer(180);
+                setOtpSentNotice(true);
+                setTimeout(() => setOtpSentNotice(false), 4000);
+                inputRefs.current[0]?.focus();
+            }
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || err.message || "Failed to resend verification code. Please try again later.";
+            setLocalError(errorMsg);
+            const retryAfter = err.response?.data?.retryAfter;
+            if (retryAfter && typeof retryAfter === "number") {
+                setResendTimer(retryAfter);
+            }
+        } finally {
+            setSendingOtp(false);
+        }
+    };
+
+    // OTP Input handlers
+    const handleOtpChange = (index, value) => {
+        if (!/^\d*$/.test(value)) return;
+
+        const newDigits = [...otpDigits];
+        const char = value.slice(-1);
+        newDigits[index] = char;
+        setOtpDigits(newDigits);
+        if (localError) setLocalError(null);
+
+        if (char && index < 5) {
+            inputRefs.current[index + 1]?.focus();
+        }
+    };
+
+    const handleOtpKeyDown = (index, e) => {
+        if (e.key === 'Backspace') {
+            if (otpDigits[index]) {
+                const newDigits = [...otpDigits];
+                newDigits[index] = '';
+                setOtpDigits(newDigits);
+            } else if (index > 0) {
+                inputRefs.current[index - 1]?.focus();
+                const newDigits = [...otpDigits];
+                newDigits[index - 1] = '';
+                setOtpDigits(newDigits);
+            }
+        } else if (e.key === 'ArrowLeft' && index > 0) {
+            inputRefs.current[index - 1]?.focus();
+        } else if (e.key === 'ArrowRight' && index < 5) {
+            inputRefs.current[index + 1]?.focus();
+        }
+    };
+
+    const handleOtpPaste = (e) => {
+        e.preventDefault();
+        const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+        if (!pasted) return;
+
+        const newDigits = [...otpDigits];
+        for (let i = 0; i < 6; i++) {
+            newDigits[i] = pasted[i] || '';
+        }
+        setOtpDigits(newDigits);
+        if (localError) setLocalError(null);
+
+        const nextEmpty = newDigits.findIndex((d) => !d);
+        const focusIdx = nextEmpty === -1 ? 5 : nextEmpty;
+        inputRefs.current[focusIdx]?.focus();
+    };
+
+    // Step 2 Final Submission
+    const handleStepTwoSubmit = (e) => {
+        e.preventDefault();
+        setLocalError(null);
+
+        const enteredOtp = otpDigits.join('');
+        if (enteredOtp.length !== 6) {
+            setLocalError("Please enter all 6 digits of the OTP code.");
+            return;
+        }
+
+        if (!verificationToken) {
+            setLocalError("Verification token missing. Please request a new OTP.");
+            return;
+        }
+
+        // Passes full credentials payload to parent handleSubmit
+        submitHandler(e, {
+            ...formData,
+            email: formData.email.trim().toLowerCase(),
+            otp: enteredOtp,
+            verificationToken: verificationToken,
+        });
+    };
+
+    const activeError = localError || error || (type === "signup" ? passwordError : null);
+
+    const formatTimer = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    };
+
+    return (
+        <form
+            className="flex flex-col gap-4 w-full"
+            onSubmit={(e) => {
+                if (type === 'login') {
+                    submitHandler(e, formData);
+                } else if (step === 1) {
+                    handleSendOtp(e);
+                } else {
+                    handleStepTwoSubmit(e);
+                }
+            }}
+        >
+            {/* Signup Step Progress Indicator */}
+            {type === 'signup' && (
+                <div className="flex items-center justify-between mb-1 pb-1 border-b border-border/50">
+                    <span className="text-[11px] font-semibold text-text-secondary tracking-wide uppercase">
+                        {step === 1 ? 'Step 1 of 2: Account Credentials' : 'Step 2 of 2: Email Verification'}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                        <span className={`h-1.5 rounded-full transition-all duration-300 ${step >= 1 ? 'w-5 bg-primary' : 'w-2 bg-border'}`} />
+                        <span className={`h-1.5 rounded-full transition-all duration-300 ${step >= 2 ? 'w-5 bg-primary' : 'w-2 bg-border'}`} />
                     </div>
                 </div>
-            </label>
-            {/* <!-- Confirm Password Input --> */}
-            {type === 'signup' && (
-                !showPassword ? (
-                    <label className="flex flex-col w-full">
-                        <div className="flex justify-between items-center pb-2">
-                            <p className="text-white text-sm font-medium leading-normal">Confirm Password</p>
-                        </div>
-                        <div className="flex w-full flex-1 items-stretch rounded-lg relative">
-                            <input
-                                className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-white bg-bg-surface border border-border h-14 placeholder:text-text-secondary p-[15px] pr-12 text-base font-normal leading-normal input-transition focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                                placeholder="Enter your password" type="password"
-                                name='confirm-password'
-                                value={formData["confirm-password"]}
-                                onChange={handleChange}
-                                required
-                            />
-                            {/* <div class="text-text-secondary flex items-center justify-center absolute right-0 top-0 bottom-0 pr-4 cursor-pointer hover:text-white transition-colors">
-                            <span class="material-symbols-outlined text-[20px]"
-                                onClick={() => {
-                                    setSignupPasswordVisible(!signupPasswordVisible);
-                                }} >
-                                {loginPasswordVisible ?
-                                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" className='fill-border'><path d="m644-428-58-58q9-47-27-88t-93-32l-58-58q17-8 34.5-12t37.5-4q75 0 127.5 52.5T660-500q0 20-4 37.5T644-428Zm128 126-58-56q38-29 67.5-63.5T832-500q-50-101-143.5-160.5T480-720q-29 0-57 4t-55 12l-62-62q41-17 84-25.5t90-8.5q151 0 269 83.5T920-500q-23 59-60.5 109.5T772-302Zm20 246L624-222q-35 11-70.5 16.5T480-200q-151 0-269-83.5T40-500q21-53 53-98.5t73-81.5L56-792l56-56 736 736-56 56ZM222-624q-29 26-53 57t-41 67q50 101 143.5 160.5T480-280q20 0 39-2.5t39-5.5l-36-38q-11 3-21 4.5t-21 1.5q-75 0-127.5-52.5T300-500q0-11 1.5-21t4.5-21l-84-82Zm319 93Zm-151 75Z" /></svg>
-                                    :
-                                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" className='fill-border'><path d="M480-320q75 0 127.5-52.5T660-500q0-75-52.5-127.5T480-680q-75 0-127.5 52.5T300-500q0 75 52.5 127.5T480-320Zm0-72q-45 0-76.5-31.5T372-500q0-45 31.5-76.5T480-608q45 0 76.5 31.5T588-500q0 45-31.5 76.5T480-392Zm0 192q-146 0-266-81.5T40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200Zm0-300Zm0 220q113 0 207.5-59.5T832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280Z" /></svg>
-                                }
-                            </span>
-                        </div> */}
-                        </div>
-                    </label>
-                )
-                    : null
             )}
-            <p className="text-red-500">{error || (type === "signup" ? passwordError : null)}</p>
-            {/* <!-- Submit Button --> */}
+
+            {/* Email Input (Login OR Signup Step 1) */}
+            {(type === 'login' || (type === 'signup' && step === 1)) && (
+                <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-text-secondary">
+                        {type === 'login' ? 'Email or Username' : 'Email address'}
+                    </label>
+                    <input
+                        className="w-full rounded-xl bg-bg-card border border-border px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-muted outline-none transition-all focus:border-primary/70 focus:ring-1 focus:ring-primary/20"
+                        placeholder={type === 'login' ? "name@example.com or username" : "name@example.com"}
+                        type={type === 'login' ? "text" : "email"}
+                        name="email"
+                        autoComplete="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        required
+                    />
+                </div>
+            )}
+
+            {/* Password Input (Login OR Signup Step 1) */}
+            {(type === 'login' || (type === 'signup' && step === 1)) && (
+                <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-text-secondary">
+                        Password
+                    </label>
+                    <div className="relative flex items-center">
+                        <input
+                            className="w-full rounded-xl bg-bg-card border border-border px-3.5 py-2.5 pr-10 text-sm text-text-primary placeholder:text-text-muted outline-none transition-all focus:border-primary/70 focus:ring-1 focus:ring-primary/20"
+                            placeholder="Enter password"
+                            type={showPassword ? "text" : "password"}
+                            name="password"
+                            autoComplete={type === 'signup' ? "new-password" : "current-password"}
+                            value={formData.password}
+                            onChange={handleChange}
+                            required
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword((p) => !p)}
+                            className="absolute right-3 p-1 text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+                            title={showPassword ? "Hide password" : "Show password"}
+                        >
+                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Confirm Password (Signup Step 1 only) */}
+            {type === 'signup' && step === 1 && (
+                <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-text-secondary">
+                        Confirm Password
+                    </label>
+                    <input
+                        className="w-full rounded-xl bg-bg-card border border-border px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-muted outline-none transition-all focus:border-primary/70 focus:ring-1 focus:ring-primary/20"
+                        placeholder="Re-enter password"
+                        type={showPassword ? "text" : "password"}
+                        name="confirm-password"
+                        autoComplete="new-password"
+                        value={formData["confirm-password"]}
+                        onChange={handleChange}
+                        required
+                    />
+                </div>
+            )}
+
+            {/* SIGNUP STEP 2: OTP Verification Card */}
+            {type === 'signup' && step === 2 && (
+                <div className="flex flex-col gap-4">
+                    {/* Header info badge */}
+                    <div className="p-3.5 rounded-xl bg-bg-card border border-border flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-xs text-text-muted">
+                                <Mail size={15} className="text-primary" />
+                                <span>Verification code sent to:</span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setStep(1);
+                                    setLocalError(null);
+                                }}
+                                className="text-[11px] text-primary hover:underline font-medium cursor-pointer"
+                            >
+                                Edit email
+                            </button>
+                        </div>
+                        <p className="text-sm font-semibold text-text-primary truncate">
+                            {formData.email}
+                        </p>
+                    </div>
+
+                    {/* Notification on success */}
+                    {otpSentNotice && (
+                        <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs">
+                            <CheckCircle2 size={15} className="shrink-0" />
+                            <span>Verification code sent to your email!</span>
+                        </div>
+                    )}
+
+                    {/* Dev Mode Tip */}
+                    <div className="flex items-start gap-2 p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-text-secondary text-[11px] leading-relaxed">
+                        <KeyRound size={14} className="text-primary shrink-0 mt-0.5" />
+                        <span>Enter the 6-digit code. In development, check your backend server console for the OTP code.</span>
+                    </div>
+
+                    {/* 6 Digit Inputs */}
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-semibold text-text-secondary">
+                            6-Digit Verification Code
+                        </label>
+                        <div className="flex justify-between items-center gap-1.5 sm:gap-2">
+                            {otpDigits.map((digit, index) => (
+                                <input
+                                    key={index}
+                                    ref={(el) => (inputRefs.current[index] = el)}
+                                    type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    maxLength={1}
+                                    value={digit}
+                                    onChange={(e) => handleOtpChange(index, e.target.value)}
+                                    onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                                    onPaste={index === 0 ? handleOtpPaste : undefined}
+                                    className={`flex-1 min-w-0 h-12 text-center text-lg font-bold rounded-xl bg-bg-card border transition-all outline-none ${digit
+                                            ? 'border-primary text-text-primary ring-1 ring-primary/40'
+                                            : 'border-border text-text-primary focus:border-primary/70 focus:ring-1 focus:ring-primary/20'
+                                        }`}
+                                />
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Resend OTP */}
+                    <div className="flex items-center justify-between text-xs px-0.5">
+                        <span className="text-text-muted">Didn't receive code?</span>
+                        {resendTimer > 0 ? (
+                            <span className="text-text-muted font-medium">
+                                Resend in {formatTimer(resendTimer)}
+                            </span>
+                        ) : (
+                            <button
+                                type="button"
+                                disabled={sendingOtp}
+                                onClick={handleResendOtp}
+                                className="text-primary hover:underline font-semibold cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                            >
+                                <RotateCw size={12} className={sendingOtp ? "animate-spin" : ""} />
+                                <span>{sendingOtp ? "Sending..." : "Resend code"}</span>
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Error Message Alert */}
+            {activeError && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
+                    <AlertCircle size={15} className="shrink-0" />
+                    <span>{activeError}</span>
+                </div>
+            )}
+
+            {/* Primary Submit Button */}
             <button
-                type='submit'
-                className="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-4 bg-primary hover:bg-blue-600 transition-colors text-white text-base font-bold leading-normal tracking-[0.015em] mt-4 shadow-lg shadow-primary/20">
-                <span className="truncate">Submit</span>
+                type="submit"
+                disabled={loading || sendingOtp || (type === 'signup' && step === 1 && resendTimer > 0)}
+                className="w-full mt-2 py-3 px-4 rounded-xl bg-primary hover:bg-primary-hover text-white text-sm font-semibold transition-all shadow-md shadow-primary/25 hover:shadow-primary/40 active:scale-98 disabled:opacity-50 disabled:pointer-events-none cursor-pointer flex items-center justify-center gap-2"
+            >
+                {loading || sendingOtp ? (
+                    <span className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                ) : type === 'login' ? (
+                    <>
+                        <span>Sign in to workspace</span>
+                        <ArrowRight size={16} />
+                    </>
+                ) : step === 1 ? (
+                    resendTimer > 0 ? (
+                        <span>Retry in {formatTimer(resendTimer)}</span>
+                    ) : (
+                        <>
+                            <span>Continue to Verification</span>
+                            <ArrowRight size={16} />
+                        </>
+                    )
+                ) : (
+                    <>
+                        <span>Verify & Create Account</span>
+                        <ArrowRight size={16} />
+                    </>
+                )}
             </button>
+
+            {/* Back Button on Step 2 */}
+            {type === 'signup' && step === 2 && (
+                <button
+                    type="button"
+                    onClick={() => {
+                        setStep(1);
+                        setLocalError(null);
+                    }}
+                    className="w-full py-2 px-4 rounded-xl border border-border hover:bg-bg-card text-text-secondary hover:text-text-primary text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                    <ArrowLeft size={14} />
+                    <span>Back to edit details</span>
+                </button>
+            )}
         </form>
-    )
+    );
 }
 
-export default AuthForm
+export default AuthForm;

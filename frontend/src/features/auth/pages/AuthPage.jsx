@@ -1,16 +1,17 @@
-import React, { useState } from 'react'
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AuthHero from '../components/AuthHero';
 import AuthTabs from '../components/AuthTabs';
 import AuthForm from '../components/AuthForm';
-import SocialLogin from '../components/SocialLogin';
 import { useAuth } from '../useAuth';
-import logo from "../../../assets/logo.png"
+import logo from "../../../assets/logo.png";
 
 function AuthPage() {
+    const navigate = useNavigate();
     const [mode, setMode] = useState('login'); // 'login' or 'signup'
-    const { login, register, loading, error, status, userData, passwordError, setPasswordError } = useAuth();
+    const { login, register, sendOtp, loading, error, passwordError, setPasswordError } = useAuth();
 
-    const handleSubmit = (e, formData) => {
+    const handleSubmit = async (e, formData) => {
         e.preventDefault();
         if (mode === 'login') {
             login(formData);
@@ -20,75 +21,72 @@ function AuthPage() {
                 return;
             }
             setPasswordError(null);
-            register(formData);
-
+            const res = await register(formData);
+            if (res?.meta?.requestStatus === 'fulfilled' || res?.payload?.statusCode === 201) {
+                navigate('/profile-complete');
+            }
         }
-    }
+    };
 
     return (
+        <div className="flex w-full min-h-screen bg-bg-app select-none">
+            {/* Left Hero (Desktop) */}
+            <AuthHero />
 
-        loading ?
-            <>
-                < center className='flex items-center justify-center h-screen w-screen' >
-                    <span className="loader"></span>
-                </center >
-
-            </> : (
-                <>
-                    <div className="flex flex-1 w-full min-h-screen lg:max-h-screen overflow-hidden">
-                        {/* <!-- Left Side: Hero / Brand Area (Desktop Only) --> */}
-                        <AuthHero />
-                        {/* <!-- Right Side: Login Form --> */}
-                        <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-6 sm:p-12 bg-bg-app relative overflow-auto">
-                            {/* <!-- Mobile Brand Header --> */}
-                            <div className="lg:hidden absolute top-8 left-8 flex items-center gap-3">
-                                <div className="size-8 text-primary">
-                                    <img className='w-full h-full drop-shadow-[0_0_5px_rgba(43,108,238,0.5)] animate-pulse' src={logo} alt="" />
-                                </div>
-                                <h2 className="text-white text-lg font-bold tracking-tight">ChatApp</h2>
-                            </div>
-                            <div className="w-full max-w-[440px] mt-20 lg:mt-0 relative flex flex-col">
-                                {/* <!-- Heading Group --> */}
-                                <div className="flex flex-col gap-3 mb-8">
-                                    <p className="text-white text-4xl font-black leading-tight tracking-[-0.033em]">Welcome Back</p>
-                                    <p className="text-text-secondary text-base font-normal leading-normal">We are so excited to see you
-                                        again!</p>
-                                </div>
-                                {/* <!-- Tabs --> */}
-                                <AuthTabs
-                                    mode={mode}
-                                    setMode={setMode}
-                                />
-                                {/* <!-- Form --> */}
-                                <AuthForm
-                                    type={mode}
-                                    submitHandler={handleSubmit}
-                                    loading={loading}
-                                    error={error}
-                                    passwordError={passwordError}
-                                />
-                                {/* <!-- Divider --> */}
-                                <div className="relative flex py-8 items-center">
-                                    <div className="grow border-t border-border"></div>
-                                    <span className="shrink-0 mx-4 text-text-secondary text-xs font-bold uppercase tracking-wider">Or
-                                        continue with</span>
-                                    <div className="grow border-t border-border"></div>
-                                </div>
-                                {/* <!-- Social Login --> */}
-                                <SocialLogin />
-                                {/* <!-- Footer Sign Up Link --> */}
-                                {/* <p class="text-text-secondary text-sm font-medium text-center mt-8">
-                                    Don't have an account? <a
-                                        class="text-primary font-bold hover:text-blue-400 hover:underline transition-colors ml-1"
-                                        href="#">Sign up</a>
-                                </p> */}
-                            </div>
+            {/* Right Form Container */}
+            <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-4 py-12 sm:px-8 md:px-12 bg-bg-app relative overflow-y-auto">
+                <div className="w-full max-w-[380px] flex flex-col items-center">
+                    {/* Brand Header on Mobile/Tablet */}
+                    <div className="lg:hidden flex items-center gap-2.5 mb-8">
+                        <div className="size-9 rounded-xl bg-gradient-to-br from-primary to-indigo-700 p-1.5 shadow-md shadow-primary/25 flex items-center justify-center">
+                            <img className="w-full h-full object-contain brightness-200" src={logo} alt="Logo" />
                         </div>
+                        <h2 className="text-lg font-bold text-text-primary tracking-tight">Chatter</h2>
                     </div>
-                </>
-            )
 
-    )
+                    {/* Heading Group */}
+                    <div className="text-center w-full mb-6">
+                        <h1 className="text-2xl font-bold text-text-primary tracking-tight">
+                            {mode === 'login' ? 'Welcome back' : 'Create your account'}
+                        </h1>
+                        <p className="text-xs text-text-secondary mt-1.5 leading-relaxed">
+                            {mode === 'login'
+                                ? 'Enter your credentials to access your conversations.'
+                                : 'Start messaging in real-time with instant sync.'}
+                        </p>
+                    </div>
+
+                    {/* Segmented Mode Switcher */}
+                    <AuthTabs mode={mode} setMode={(m) => { setPasswordError(null); setMode(m); }} />
+
+                    {/* Auth Form */}
+                    <AuthForm
+                        type={mode}
+                        submitHandler={handleSubmit}
+                        sendOtp={sendOtp}
+                        loading={loading}
+                        error={error}
+                        passwordError={passwordError}
+                    />
+
+                    {/* Footer Mode Switch Prompt */}
+                    <p className="text-xs text-text-muted text-center mt-8">
+                        {mode === 'login' ? "Don't have an account?" : "Already have an account?"}{' '}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setPasswordError(null);
+                                setMode(mode === 'login' ? 'signup' : 'login');
+                            }}
+                            className="text-primary hover:underline font-semibold cursor-pointer ml-1"
+                        >
+                            {mode === 'login' ? 'Sign up' : 'Log in'}
+                        </button>
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
 }
 
-export default AuthPage
+export default AuthPage;

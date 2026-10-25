@@ -1,21 +1,32 @@
-import React from 'react'
+import React from 'react';
 
 function AuthTabs({ mode, setMode }) {
     return (
-        <div className="mb-8">
-            <div className="flex border-b border-border gap-8">
-                <button className={`flex flex-col items-center justify-center border-b-[3px] ${mode === 'login' ? " border-b-primary " : " border-b-transparent text-text-secondary hover:text-white "} text-white border-b-primary pb-3 pt-4 px-2 cursor-pointer transition-colors`}
-                    onClick={() => setMode('login')}
-                >
-                    <p className="text-sm font-bold leading-normal tracking-[0.015em]">Log In</p>
-                </button>
-                <button className={`flex flex-col items-center justify-center border-b-[3px]  ${mode === 'signup' ? " border-b-primary " : " border-b-transparent text-text-secondary hover:text-white "} text-white  pb-3 pt-4 px-2 cursor-pointer transition-colors`}
-                    onClick={() => setMode('signup')}>
-                    <p className="text-sm font-bold leading-normal tracking-[0.015em]">Sign Up</p>
-                </button>
-            </div>
+        <div className="w-full mb-6 p-1 rounded-xl bg-bg-card border border-border flex items-center select-none">
+            <button
+                type="button"
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                    mode === 'login'
+                        ? 'bg-primary text-white shadow-xs'
+                        : 'text-text-secondary hover:text-text-primary'
+                }`}
+                onClick={() => setMode('login')}
+            >
+                Log In
+            </button>
+            <button
+                type="button"
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                    mode === 'signup'
+                        ? 'bg-primary text-white shadow-xs'
+                        : 'text-text-secondary hover:text-text-primary'
+                }`}
+                onClick={() => setMode('signup')}
+            >
+                Create Account
+            </button>
         </div>
-    )
+    );
 }
 
-export default AuthTabs
+export default AuthTabs;

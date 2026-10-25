@@ -155,31 +155,4 @@ export function registerMessageHandlers(io, socket, onlineUsers, typingUsers, ty
         }
     });
 
-    socket.on("get-message-by-pagination", async (data) => {
-        try {
-            const { chatId, chatType, page = 1, limit = 20 } = data;
-            const result = await getMessagesByPagination({
-                chatId,
-                chatType,
-                page,
-                limit
-            });
-            socket.emit("message_received", {
-                message: result.messages[0],
-                chat: result.directChat,
-                isNewChat: false,
-            });
-
-            socket.emit("messages_loaded", {
-                messages: result.messages,
-                chat: result.directChat,
-                isNewChat: false,
-                total: result.total,
-                totalPages: result.totalPages,
-            });
-        } catch (error) {
-            console.error("get-message-by-pagination error: ", error);
-            socket.emit("message_error", { error: error.message });
-        }
-    })
 }

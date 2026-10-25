@@ -6,7 +6,7 @@ const userSchema = new Schema(
     {
         username: {
             type: String,
-            required: true,
+            // required: true,
             unique: true,
         },
         email: {
@@ -20,7 +20,7 @@ const userSchema = new Schema(
         },
         displayName: {
             type: String,
-            required: true
+            // required: true
         },
         avatarUrl: {
             type: String,
@@ -33,6 +33,14 @@ const userSchema = new Schema(
         },
         refreshToken: {
             type: String,
+        },
+        isDeleted: {
+            type: Boolean,
+            default: false,
+        },
+        isBanned: {
+            type: Boolean,
+            default: false,
         }
     },
     {

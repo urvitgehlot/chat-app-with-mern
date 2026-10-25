@@ -1,21 +1,26 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
-import ChatBubble from '../../../components/ui/ChatBubble'
-import DirectMessageProfile from '../components/DirectMessageProfile'
-import { useParams } from 'react-router-dom'
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, ChevronDown, Info, Shield, Sparkles } from 'lucide-react';
+import ChatBubble from '../../../components/ui/ChatBubble';
+import DirectMessageProfile from '../components/DirectMessageProfile';
+import SendMessageInput from '../components/SendMessageInput';
+import ManageContactModal from '../components/ManageContactModal';
+import Avatar from '../../../components/ui/Avatar';
+import IconButton from '../../../components/ui/IconButton';
+import { MessageSkeleton } from '../../../components/ui/Skeleton';
 import { useChat } from '../useChat';
 import { useAuth } from '../../auth/useAuth';
-import { formatedSmartDate } from '../../../utils/date';
-import SendMessageInput from '../components/SendMessageInput';
 import { createChatKey } from '../../../utils/chatKey';
-import ManageContactModal from '../components/ManageContactModal';
 
 function DirectMessage() {
     const { directChatId } = useParams();
-    const { chats, messages, users, joinChat, getChatMessagesByPage } = useChat();
+    const navigate = useNavigate();
+    const { chats, messages, onlineUsers, joinChat, closeChat, getChatMessagesByPage } = useChat();
     const { userData } = useAuth();
 
     const [showGoToBottomBtn, setShowGoToBottomBtn] = useState(false);
     const [showManageContactModal, setShowManageContactModal] = useState(false);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
 
     const chatRef = useRef();
     const chatBottomRef = useRef();
@@ -26,16 +31,15 @@ function DirectMessage() {
     const chatMessagesState = messages.byChatKey[chatKey];
     const isLoading = chatMessagesState?.loading || false;
     const hasMore = chatMessagesState?.hasMore ?? true;
-    const currentPage = chatMessagesState?.currentPage || 1;
     const isInitialLoading = (isLoading || chats.loading) && (!chatMessagesState?.ids || chatMessagesState?.ids.length === 0);
 
     const currentChatUser = useMemo(() => {
         const participants = chats.entities[chatKey]?.participants;
-        if (!participants) {
-            return null;
-        }
-        return participants.find(participant => participant._id !== userData?._id);
+        if (!participants) return null;
+        return participants.find((participant) => participant._id !== userData?._id);
     }, [chats.entities, chatKey, userData?._id]);
+
+    const isUserOnline = currentChatUser?._id && Boolean(onlineUsers?.[currentChatUser._id]);
 
     useEffect(() => {
         if (chats.loading) return;
@@ -43,10 +47,11 @@ function DirectMessage() {
         getChatMessagesByPage({
             chatId: directChatId,
             page: 1,
-            limit: 3000,
+            limit: 20,
             chatType: "direct",
         });
         joinChat({ chatId: directChatId, chatType: 'direct' });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [directChatId, chats.loading]);
 
     // Reset fetching ref once loading completes
@@ -56,7 +61,7 @@ function DirectMessage() {
         }
     }, [isLoading]);
 
-    // Intersection observer for top (infinite scroll for older messages)
+    // Infinite scroll for older messages
     useEffect(() => {
         const topElement = chatTopRef.current;
         const scrollContainer = chatRef.current;
@@ -79,12 +84,11 @@ function DirectMessage() {
         });
 
         observer.observe(topElement);
-
         return () => observer.disconnect();
-
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [directChatId, hasMore, chatMessagesState?.currentPage, chats.loading]);
 
-    // Intersection observer for bottom (show/hide go-to-bottom button)
+    // Bottom sentinel observer for go-to-bottom button
     useEffect(() => {
         const bottomElement = chatBottomRef.current;
         const scrollContainer = chatRef.current;
@@ -103,126 +107,179 @@ function DirectMessage() {
         });
 
         observer.observe(bottomElement);
-
         return () => observer.disconnect();
-
     }, [directChatId]);
 
+    const messageIds = chatMessagesState?.ids || [];
 
     return (
-        isInitialLoading ? < center className='flex items-center justify-center h-screen w-screen' >
-            <span className="loader"></span>
-        </center > :
-            <>
-                <main className="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#101622] relative">
-                    {/* <!-- Chat Header --> */}
-                    <header
-                        className="h-16 flex items-center justify-between px-6 border-b border-gray-200 dark:border-white/10 shrink-0">
-                        <div className="flex items-center gap-3">
-                            <div className="md:hidden">
-                                <button className="text-slate-500 dark:text-slate-300">
-                                    <span className="material-symbols-outlined">menu</span>
-                                </button>
-                            </div>
-                            <div className="relative">
-                                <div className="bg-center bg-no-repeat bg-cover rounded-full h-10 w-10"
-                                    data-alt="Portrait of Sarah Miller"
-                                    style={{ backgroundImage: `url("${currentChatUser?.avatarUrl}")` }}>
-                                </div>
-                                <span
-                                    className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-white dark:ring-[#101622]"></span>
-                            </div>
-                            <div>
-                                <h2 className="text-base font-bold leading-tight">{currentChatUser?.displayName}</h2>
-                                <p className="text-xs text-green-500 font-medium">Active now</p>
-                            </div>
+        <div className="flex-1 flex min-w-0 h-full relative overflow-hidden bg-bg-app">
+            <main className="flex-1 flex flex-col min-w-0 h-full relative">
+                {/* Chat Header */}
+                <header className="h-15 flex items-center justify-between px-3 sm:px-5 border-b border-border bg-bg-surface/90 backdrop-blur-md shrink-0 z-10 select-none">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        {/* Mobile Back Button */}
+                        <div className="md:hidden">
+                            <IconButton
+                                icon={ArrowLeft}
+                                size="md"
+                                title="Back to conversations"
+                                onClick={() => {
+                                    closeChat();
+                                    navigate('/');
+                                }}
+                            />
                         </div>
-                        <div className="flex items-center gap-1 sm:gap-2">
-                            <button
-                                className="h-9 w-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-[#92a4c9] dark:hover:bg-white/5 transition-colors">
-                                <span className="material-symbols-outlined text-[20px]">search</span>
-                            </button>
-                            <button
-                                className="h-9 w-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-[#92a4c9] dark:hover:bg-white/5 transition-colors">
-                                <span className="material-symbols-outlined text-[20px]">call</span>
-                            </button>
-                            <button
-                                className="h-9 w-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-[#92a4c9] dark:hover:bg-white/5 transition-colors">
-                                <span className="material-symbols-outlined text-[20px]">videocam</span>
-                            </button>
-                            <button
-                                className="h-9 w-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-[#92a4c9] dark:hover:bg-white/5 transition-colors xl:hidden">
-                                <span className="material-symbols-outlined text-[20px]">info</span>
-                            </button>
-                        </div>
-                    </header>
-                    {/* <!-- Messages Stream --> */}
-                    <div ref={chatRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 flex flex-col-reverse scrollbar-hide relative">
 
+                        {/* User Identity clickable for info */}
+                        <div
+                            onClick={() => setIsProfileOpen((prev) => !prev)}
+                            className="flex items-center gap-2.5 cursor-pointer min-w-0 group p-1 -m-1 rounded-xl hover:bg-bg-hover transition-colors"
+                        >
+                            <Avatar
+                                src={currentChatUser?.avatarUrl}
+                                name={currentChatUser?.displayName || "User"}
+                                size="md"
+                                status={isUserOnline ? "online" : null}
+                            />
+                            <div className="min-w-0">
+                                <h2 className="text-sm sm:text-base font-semibold text-text-primary leading-tight truncate group-hover:text-primary transition-colors">
+                                    {currentChatUser?.displayName || "Direct Message"}
+                                </h2>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                    <span
+                                        className={`size-1.5 rounded-full ${
+                                            isUserOnline ? "bg-emerald-500 animate-pulse" : "bg-slate-500"
+                                        }`}
+                                    />
+                                    <span className="text-[11px] text-text-muted">
+                                        {isUserOnline ? "Active now" : "Offline"}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Header Actions */}
+                    <div className="flex items-center gap-1 shrink-0">
+                        <IconButton
+                            icon={Info}
+                            size="md"
+                            title="Contact info & settings"
+                            active={isProfileOpen}
+                            onClick={() => setIsProfileOpen((prev) => !prev)}
+                        />
+                    </div>
+                </header>
+
+                {/* Messages Stream Area */}
+                {isInitialLoading ? (
+                    <div className="flex-1 flex flex-col justify-end">
+                        <MessageSkeleton />
+                    </div>
+                ) : (
+                    <div
+                        ref={chatRef}
+                        className="flex-1 overflow-y-auto p-3 sm:p-5 flex flex-col-reverse scrollbar-hide relative select-text"
+                    >
                         <div ref={chatBottomRef}>
                             {/* Bottom Sentinel */}
                         </div>
 
-                        {
-                            showGoToBottomBtn &&
-                            <button onClick={() => {
-                                chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
-                                setShowGoToBottomBtn(false);
-                            }}
-                                className="text-white w-10 h-10 bg-primary p-2 rounded-full flex items-center justify-center cursor-pointer sticky ml-auto w-fit bottom-4 right-4 z-10 shadow-lg hover:opacity-90 transition-opacity">
-                                <span className="material-symbols-outlined text-[20px]">keyboard_arrow_down</span>
+                        {/* Scroll to Bottom Button */}
+                        {showGoToBottomBtn && (
+                            <button
+                                onClick={() => {
+                                    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+                                    setShowGoToBottomBtn(false);
+                                }}
+                                title="Jump to recent"
+                                className="sticky ml-auto bottom-3 right-3 size-9 rounded-full bg-bg-elevated hover:bg-bg-hover text-text-primary border border-border shadow-lg flex items-center justify-center cursor-pointer transition-all hover:scale-105 active:scale-95 z-20"
+                            >
+                                <ChevronDown size={18} />
                             </button>
-                        }
+                        )}
 
-                        {
-                            chatMessagesState?.ids?.map(messageId => {
-                                const message = messages.entities[messageId];
-                                if (!message) return null;
-                                const sentAt = new Date(`${message.sentAt}`);
+                        {/* Messages List with Smart Grouping */}
+                        {messageIds.map((messageId, index) => {
+                            const message = messages.entities[messageId];
+                            if (!message) return null;
 
-                                const otherUser = chats.entities[chatKey]?.participants?.find(participant => participant._id !== userData?._id);
+                            const isReceived = message.senderId !== userData?._id;
+                            const sentAt = new Date(`${message.sentAt || message.createdAt || Date.now()}`);
 
-                                return (
-                                    <React.Fragment key={messageId}>
-                                        <ChatBubble
-                                            message={message.content}
-                                            isReceived={message.senderId !== userData?._id}
-                                            senderAvatar={message.senderId !== userData?._id ? otherUser?.avatarUrl : null}
-                                            msgDateTime={sentAt}
-                                        />
-                                    </React.Fragment>
-                                );
-                            })
-                        }
+                            // Grouping calculation in flex-col-reverse:
+                            // previous chronological message is at index + 1
+                            // next chronological message is at index - 1
+                            const prevMessage = messages.entities[messageIds[index + 1]];
+                            const nextMessage = messages.entities[messageIds[index - 1]];
+
+                            const isFirstInGroup = !prevMessage || prevMessage.senderId !== message.senderId;
+                            const isLastInGroup = !nextMessage || nextMessage.senderId !== message.senderId;
+
+                            return (
+                                <ChatBubble
+                                    key={messageId}
+                                    message={message.content}
+                                    isReceived={isReceived}
+                                    senderAvatar={isReceived ? currentChatUser?.avatarUrl : null}
+                                    senderName={isReceived ? currentChatUser?.displayName : null}
+                                    msgDateTime={sentAt}
+                                    status={message.status || "sent"}
+                                    isRead={Boolean(message.isRead)}
+                                    isFirstInGroup={isFirstInGroup}
+                                    isLastInGroup={isLastInGroup}
+                                />
+                            );
+                        })}
+
+                        {/* Top Sentinel & Loading Indicator for pagination */}
                         <div
                             ref={chatTopRef}
                             style={{ overflowAnchor: 'none' }}
                             className="w-full flex justify-center py-2 min-h-[1px]"
                         >
                             {isLoading && !isInitialLoading && (
-                                <div className="flex items-center gap-2 text-xs text-slate-400 py-2">
-                                    <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
+                                <div className="flex items-center gap-2 text-xs text-text-muted py-2">
+                                    <span className="size-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                                     <span>Loading older messages...</span>
                                 </div>
                             )}
-                            {!hasMore && (chatMessagesState?.ids?.length || 0) > 0 && (
-                                <div className="text-xs text-slate-400/60 py-2">
-                                    Beginning of conversation
+                            {!hasMore && messageIds.length > 0 && (
+                                <div className="flex items-center gap-1.5 text-[11px] text-text-disabled py-3">
+                                    <Shield size={12} />
+                                    <span>Beginning of encrypted direct conversation</span>
                                 </div>
                             )}
                         </div>
-
                     </div>
-                    {/* <!-- Input Area --> */}
-                    <SendMessageInput inputType="direct" chatId={directChatId} currentChatUser={currentChatUser} />
-                </main >
-                {/* <!-- Right Details Sidebar --> */}
-                < DirectMessageProfile currentChatUser={currentChatUser} />
+                )}
 
-                {showManageContactModal && <ManageContactModal onClose={() => setShowManageContactModal(false)} />}
+                {/* Message Composer */}
+                <SendMessageInput
+                    inputType="direct"
+                    chatId={directChatId}
+                    currentChatUser={currentChatUser}
+                />
+            </main>
 
-            </>
-    )
+            {/* Right Contact Details Drawer */}
+            <DirectMessageProfile
+                currentChatUser={currentChatUser}
+                isOpen={isProfileOpen}
+                onClose={() => setIsProfileOpen(false)}
+                onManageContact={() => setShowManageContactModal(true)}
+            />
+
+            {/* Manage Contact Modal */}
+            {showManageContactModal && (
+                <ManageContactModal
+                    contactUser={currentChatUser}
+                    onClose={() => setShowManageContactModal(false)}
+                />
+            )}
+        </div>
+    );
 }
 
-export default DirectMessage
+export default DirectMessage;

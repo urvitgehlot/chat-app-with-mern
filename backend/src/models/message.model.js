@@ -5,7 +5,9 @@ const messageSchema = new Schema(
         groupId: {
             type: Schema.Types.ObjectId,
             ref: "Group",
-            // required: true,
+            required: function () {
+                return this.chatType === "group";
+            },
         },
         replyToMessageId: {
             type: Schema.Types.ObjectId,
@@ -14,15 +16,21 @@ const messageSchema = new Schema(
         directChat: {
             type: Schema.Types.ObjectId,
             ref: "DirectChat",
+            required: function () {
+                return this.chatType === "direct";
+            },
         },
         chatType: {
             type: String,
             enum: ["direct", "group"],
             required: true,
+            trim: true,
+            lowercase: true,
         },
         content: {
             type: String,
             required: true,
+            // trim: true,
         },
         senderId: {
             type: Schema.Types.ObjectId,
@@ -47,22 +55,24 @@ const messageSchema = new Schema(
     }
 );
 
-messageSchema.pre("save", function () {
-    if (this.chatType === "direct") {
-        this.groupId = undefined;
-    } else if (this.chatType === "group") {
-        this.directChat = undefined;
-    }
-});
+// messageSchema.pre("save", function () {
+//     if (this.chatType === "direct") {
+//         this.groupId = undefined;
+//     } else if (this.chatType === "group") {
+//         this.directChat = undefined;
+//     }
+// });
 
 messageSchema.index({
     directChat: 1,
-    sentAt: 1
+    chatType: 1,
+    sentAt: -1
 });
 
 messageSchema.index({
     groupId: 1,
-    sentAt: 1
+    chatType: 1,
+    sentAt: -1
 });
 
 messageSchema.index({

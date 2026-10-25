@@ -12,7 +12,11 @@ export const loginAsync = createAsyncThunk("auth/login", async (credentials, { r
     try {
         const response = await authAPI.loginUser(credentials);
         return response;
-    } catch (error) {
+    }
+    catch (error) {
+        console.error("login error : ", error);
+        if (error.response.status === 401)
+            return rejectWithValue("invalid credential");
         return rejectWithValue(error.response?.data?.message || "login failed");
     }
 })
@@ -52,6 +56,20 @@ export const checkAuthAsync = createAsyncThunk("auth/checkAuth", async (_, { rej
         return response;
     } catch (error) {
         return rejectWithValue(error.response?.data?.message || "check auth failed");
+    }
+}, {
+    condition: (_, { getState }) => {
+        const { loading } = getState().auth;
+        if (loading) return false;
+    }
+})
+
+export const completeProfileSetupAsync = createAsyncThunk("auth/completeProfileSetup", async (formData, { rejectWithValue }) => {
+    try {
+        const response = await authAPI.completeProfileSetup(formData);
+        return response;
+    } catch (error) {
+        return rejectWithValue(error.response?.data?.message || "profile setup failed");
     }
 })
 
@@ -97,11 +115,11 @@ const authSlice = createSlice({
                 state.error = action.payload;
             })
             // LogoutUser Case
-            .addCase(logoutAsync.pending, (state, action) => {
+            .addCase(logoutAsync.pending, (state) => {
                 state.loading = true;
                 state.error = null;
             })
-            .addCase(logoutAsync.fulfilled, (state, action) => {
+            .addCase(logoutAsync.fulfilled, (state) => {
                 state.loading = false;
                 state.status = false;
                 state.userData = null;
@@ -140,6 +158,21 @@ const authSlice = createSlice({
 
                 localStorage.removeItem('authStatus');
                 localStorage.removeItem('userData');
+            })
+            // Complete Profile Setup Cases
+            .addCase(completeProfileSetupAsync.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(completeProfileSetupAsync.fulfilled, (state, action) => {
+                state.loading = false;
+                state.userData = action.payload.data;
+
+                localStorage.setItem('userData', JSON.stringify(action.payload.data));
+            })
+            .addCase(completeProfileSetupAsync.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
             })
             // refresh access token
             .addCase(refreshTokenAsync.pending, (state) => {

@@ -24,12 +24,12 @@ const directchatSchema = new Schema(
             ref: "User",
             required: true,
         },
-        typingUsers: [
-            {
-                type: Schema.Types.ObjectId,
-                ref: "User",
-            }
-        ]
+        // typingUsers: [
+        //     {
+        //         type: Schema.Types.ObjectId,
+        //         ref: "User",
+        //     }
+        // ]
     },
     {
         timestamps: true,
@@ -46,12 +46,14 @@ directchatSchema.pre("save", function () {
     this.participants = sorted.map(id => new mongoose.Types.ObjectId(id));
     console.log("participants: ", this.participants);
 
-    // 🔥 create unique key
+    // create unique key
     this.participantsKey = sorted.join("_");
     // console.log("participantsKey: ", this.participantsKey);
 
 });
 
-// directchatSchema.index({ participants: 1 }, { unique: true });
+directchatSchema.index({ participants: 1 });
+directchatSchema.index({ participantsKey: 1 }, { unique: true });
+
 
 export const DirectChat = mongoose.model('DirectChat', directchatSchema);

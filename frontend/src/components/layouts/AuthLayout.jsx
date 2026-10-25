@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { checkAuthAsync, logoutAsync } from '../../features/auth/authSlice';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 
 export default function Protected({ children, authentication = true, logoutUser = false }) {
   const navigate = useNavigate();
-  const { status: authStatus, loading } = useSelector((state) => state.auth);
+  const location = useLocation();
+  const { status: authStatus, userData, loading } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
+  useNetworkStatus();
 
   // false = waiting for auth verification, true = ready to render
   const [isReady, setIsReady] = useState(!authStatus);
@@ -25,12 +28,20 @@ export default function Protected({ children, authentication = true, logoutUser 
     if (authentication && !authStatus) {
       navigate("/login");
     } else if (!authentication && authStatus && !logoutUser) {
-      navigate("/");
+      if (!userData?.username) {
+        navigate("/profile-complete");
+      } else {
+        navigate("/");
+      }
     } else if (logoutUser && authStatus) {
       dispatch(logoutAsync());
       navigate("/login");
+    } else if (authentication && authStatus && !userData?.username && location.pathname !== '/profile-complete') {
+      navigate("/profile-complete");
+    } else if (authentication && authStatus && userData?.username && location.pathname === '/profile-complete') {
+      navigate("/");
     }
-  }, [authentication, authStatus, loading, navigate, isReady, logoutUser]);
+  }, [authentication, authStatus, userData, loading, navigate, isReady, logoutUser, dispatch, location.pathname]);
 
   if (!isReady || loading) {
     return (

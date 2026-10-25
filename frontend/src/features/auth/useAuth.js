@@ -1,5 +1,6 @@
 import { useDispatch, useSelector } from "react-redux";
-import { loginAsync, logoutAsync, registerAsync } from "./authSlice";
+import { loginAsync, logoutAsync, registerAsync, completeProfileSetupAsync } from "./authSlice";
+import { sendRegistrationOTP as sendOtpApi } from "./authAPI";
 import { useState } from "react";
 
 
@@ -18,6 +19,14 @@ export const useAuth = () => {
         return dispatch(registerAsync(credentials));
     }
 
+    const sendRegistrationOTP = (data) => {
+        return sendOtpApi(data);
+    }
+
+    const completeProfileSetup = (formData) => {
+        return dispatch(completeProfileSetupAsync(formData));
+    }
+
     const logout = () => {
         dispatch(logoutAsync());
     }
@@ -25,6 +34,9 @@ export const useAuth = () => {
     return {
         login,
         register,
+        completeProfileSetup,
+        sendRegistrationOTP,
+        sendOtp: sendRegistrationOTP,
         logout,
         status,
         userData,

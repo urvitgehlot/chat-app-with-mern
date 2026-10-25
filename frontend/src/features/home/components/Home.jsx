@@ -1,36 +1,49 @@
-import React from 'react'
+import React from 'react';
+import { MessageSquare, ShieldCheck, Sparkles, Command } from 'lucide-react';
 
 function Home() {
-
     return (
-        <main className="hidden md:flex flex-1 flex-col items-center justify-center bg-background-dark relative p-8">
-            {/* <!-- Background Decoration (Optional subtle pattern) --> */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
-                <div
-                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[100px]">
-                </div>
+        <main className="hidden md:flex flex-1 flex-col items-center justify-center bg-bg-app relative p-8 select-none overflow-hidden">
+            {/* Ambient Background Aura */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-tr from-primary/10 to-indigo-500/5 rounded-full blur-[100px] opacity-70" />
+                {/* Subtle Grid Accent */}
+                <div 
+                    className="absolute inset-0 opacity-[0.02]"
+                    style={{
+                        backgroundImage: `radial-gradient(rgba(255, 255, 255, 0.4) 1px, transparent 1px)`,
+                        backgroundSize: '24px 24px'
+                    }}
+                />
             </div>
-            <div className="relative z-10 flex flex-col items-center max-w-md text-center">
-                <div className="mb-8 p-6 rounded-full bg-surface-dark/50 border border-surface-dark shadow-2xl">
-                    <span className="material-symbols-outlined text-[64px] text-primary/80">forum</span>
+
+            <div className="relative z-10 flex flex-col items-center max-w-sm text-center">
+                {/* Minimalist Icon Vessel */}
+                <div className="relative mb-6">
+                    <div className="size-16 rounded-2xl bg-bg-card/80 border border-white/10 flex items-center justify-center shadow-2xl backdrop-blur-xl group hover:border-primary/40 transition-colors">
+                        <MessageSquare className="size-7 text-primary stroke-[1.75]" />
+                    </div>
+                    <div className="absolute -top-1 -right-1 size-5 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center">
+                        <Sparkles className="size-2.5 text-primary" />
+                    </div>
                 </div>
-                <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">Connect with your team</h1>
-                <p className="text-[#92a4c9] text-lg mb-8 leading-relaxed">
-                    Send and receive messages without keeping your phone online.<br />
-                    Use ChatApp on up to 4 linked devices and 1 phone.
+
+                {/* Typography Hierarchy */}
+                <h1 className="text-xl font-semibold text-text-primary tracking-tight mb-2">
+                    Your conversations live here
+                </h1>
+                <p className="text-sm text-text-secondary leading-relaxed mb-6 max-w-xs">
+                    Select a conversation from the sidebar or press <kbd className="px-1.5 py-0.5 text-xs font-mono bg-bg-card border border-border rounded text-text-primary">⌘K</kbd> to jump straight into messaging.
                 </p>
-                <button
-                    className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 shadow-lg shadow-primary/20 hover:shadow-primary/40 transform hover:-translate-y-0.5">
-                    <span className="material-symbols-outlined text-[20px]">add_comment</span>
-                    <span>Start New Chat</span>
-                </button>
-                <div className="mt-12 flex items-center gap-2 text-sm text-[#5d6b82]">
-                    <span className="material-symbols-outlined text-[16px]">lock</span>
-                    <p>End-to-end encrypted</p>
+
+                {/* Security Tag */}
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-bg-surface/80 border border-border text-[11px] font-medium text-text-muted">
+                    <ShieldCheck className="size-3.5 text-emerald-400" />
+                    <span>Real-time end-to-end encrypted</span>
                 </div>
             </div>
         </main>
-    )
+    );
 }
 
-export default Home
+export default Home;

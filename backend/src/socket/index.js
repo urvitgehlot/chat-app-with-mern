@@ -12,7 +12,7 @@ let onlineUsers = {};
 
 
 let allChatList = {
-    "chatId": {
+    "direct:chatId": {
         "chatType": "direct" | "group",
         "participants": ["userId1", "userId2"]
     }
@@ -20,17 +20,10 @@ let allChatList = {
 
 let onlineUsersWithThereChatList = {
     "userId": {
-        "chats": {
-            "chatId": {
-                "chatType": "direct"
-            },
-            "chatId2": {
-                "chatType": "group"
-            },
-            "chatId3": {
-                "chatType": "group"
-            },
-        },
+        "chats": [
+            "direct:chatId",
+            "group:chatId",
+        ],
         "is_online": false,
     }
 };

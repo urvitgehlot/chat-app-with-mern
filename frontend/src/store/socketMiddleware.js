@@ -1,5 +1,5 @@
 import { refreshTokenAsync } from "../features/auth/authSlice";
-import { messageReceived, messageSentAsync, receiveMessageAsync } from "../features/chat/chatSlice";
+import { messageReceived, receiveMessageAsync } from "../features/chat/chatSlice";
 import { initialsSocketConnection, disconnectSocket, getSocket } from "../services/socket";
 
 let isInitialized = false;
@@ -43,14 +43,6 @@ const socketMiddleware = (store) => (next) => (action) => {
                     console.error("Socket disconnected");
                 })
 
-                socket.on('message_sent', (data) => {
-                    store.dispatch(messageSentAsync(data));
-                });
-
-                // socket.on('receive_message', (data) => {
-                //     store.dispatch(messageReceived(data));
-                // })
-
                 socket.on('receive_message', (data) => {
                     // console.log("receive_message: ", data)
                     store.dispatch(receiveMessageAsync(data));
@@ -74,14 +66,6 @@ const socketMiddleware = (store) => (next) => (action) => {
     if (action.type === 'auth/logout/fulfilled') {
         disconnectSocket();
         isInitialized = false;
-    }
-
-    if (action.type === 'chat/sendMessage/pending') {
-        const socket = getSocket();
-        console.log("sending socket: ", action)
-        if (socket) {
-            socket.emit('send_message', action.meta.arg);
-        }
     }
 
     if (action.type === 'chat/joinChat') {

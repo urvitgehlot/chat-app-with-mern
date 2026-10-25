@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { getCurrentUser, loginUser, logoutUser, refreshAccessToken, registerUser, updateAboutMe, updateAvatar, updateDisplayName } from "../controllers/user.controllers.js";
+import { completeProfileSetup, getCurrentUser, loginUser, logoutUser, refreshAccessToken, registerUser, sendRegistrationOTP, updateAboutMe, updateAvatar, updateDisplayName } from "../controllers/user.controllers.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
+import { createTokenBucketLimiter } from "../middlewares/tokenBucket.middleware.js";
 
 /**
  * @swagger
@@ -9,6 +10,41 @@ import { verifyJWT } from "../middlewares/auth.middleware.js";
  *   name: Users
  *   description: User management and authentication APIs
  */
+
+
+const registerBucket = createTokenBucketLimiter({
+    capacity: 5,
+    refillIntervalSeconds: 180,
+    keyGenerator: (req) => `${req.ip}_${req.body?.email || ""}`
+});
+
+const loginAttemptLimiter = createTokenBucketLimiter({
+    capacity: 3,
+    refillIntervalSeconds: 86400,
+    keyGenerator: (req) => `login_attempt_${req.body?.email || req.ip}`,
+    message: "Too many login attempts. Account temporarily locked for security. Please try again tomorrow."
+});
+
+const registerAttemptLimiter = createTokenBucketLimiter({
+    capacity: 3,
+    refillIntervalSeconds: 86400,
+    keyGenerator: (req) => `register_attempt_${req.body?.email || req.ip}`,
+    message: "Too many registration attempts. For security reasons, please try again tomorrow."
+});
+
+const sendOtpLimiter = createTokenBucketLimiter({
+    capacity: 1,
+    refillIntervalSeconds: 180,
+    keyGenerator: (req) => `send_otp_${req.body?.email || req.ip}`,
+    message: (retryAfter) => `Please wait ${retryAfter} second(s) before requesting another OTP.`
+});
+
+const sendOtpAttemptLimiter = createTokenBucketLimiter({
+    capacity: 3,
+    refillIntervalSeconds: 86400,
+    keyGenerator: (req) => `send_otp_attempt_${req.body?.email || req.ip}`,
+    message: "Daily limit reached for OTP requests (maximum 3 requests per day). Please try again tomorrow."
+});
 
 /**
  * @swagger
@@ -86,6 +122,46 @@ const router = Router()
 
 /**
  * @swagger
+ * /api/v1/users/send-registration-otp:
+ *   post:
+ *     summary: Send OTP to user's email for registration
+ *     description: Sends a one-time password (OTP) to the user's email address for verification during the registration process. Uses rate limiting to prevent abuse.
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Email address of the user for verification
+ *             example:
+ *               email: [EMAIL_ADDRESS]
+ *     responses:
+ *       200:
+ *         description: OTP sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       429:
+ *         description: Rate limit exceeded. Too many requests. Please try again later.
+ *       500:
+ *         description: Internal server error
+ */
+router.route('/send-registration-otp').post(
+    sendOtpLimiter,
+    sendOtpAttemptLimiter,
+    sendRegistrationOTP
+)
+
+/**
+ * @swagger
  * /api/v1/users/login:
  *   post:
  *     summary: Log in an existing user
@@ -127,7 +203,7 @@ const router = Router()
  *       500:
  *         description: Internal server error
  */
-router.route('/login').post(loginUser)
+router.route('/login').post(loginAttemptLimiter, loginUser)
 
 /**
  * @swagger
@@ -173,7 +249,18 @@ router.route('/login').post(loginUser)
  *       500:
  *         description: Internal server error
  */
-router.route('/register').post(registerUser)
+router.route('/register').post(
+    // registerBucket,
+    registerAttemptLimiter,
+    registerUser
+)
+
+
+router.route('/complete-profile-setup').post(
+    verifyJWT,
+    upload.single("avatar"),
+    completeProfileSetup
+)
 
 /**
  * @swagger

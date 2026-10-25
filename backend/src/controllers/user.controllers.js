@@ -1,10 +1,14 @@
+import fs from "fs";
 import { httpsOptions } from "../constants.js";
 import { User } from "../models/user.model.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js"
-import jwt from "jsonwebtoken"
+import { uploadOnCloudinary, deleteOnCloudinary } from "../utils/cloudinary.js";
+import jwt from "jsonwebtoken";
+import { generateOTP, generateVerificationToken, verifyVerificationToken } from "../utils/otp.js";
+import { sendEmail } from "../emails/mailer.js";
+import { otpTemplate } from "../emails/templates.js";
 
 const generateAccessAndRefreshToken = async (userId) => {
     try {
@@ -22,6 +26,8 @@ const generateAccessAndRefreshToken = async (userId) => {
     }
 }
 
+
+// not in use right now
 const generateUniqueUserName = async ({ displayName }) => {
     try {
         let username = displayName.toLowerCase().trim();
@@ -49,11 +55,60 @@ const generateUniqueUserName = async ({ displayName }) => {
 
 }
 
+const sendRegistrationOTP = asyncHandler(async (req, res) => {
+    const { email } = req.body
+    if (!email || !email.trim()) {
+        throw new ApiError(400, "Email is required")
+    }
+
+    try {
+        const existedUser = await User.findOne({
+            email: email.trim().toLowerCase()
+        })
+        if (existedUser) {
+            throw new ApiError(409, "User with email Already Existed")
+        }
+
+        const otp = generateOTP();
+        const verificationToken = generateVerificationToken(email, otp, 10);
+
+        if (process.env.NODE_ENV === "development") {
+            console.log('[DEV Only] OTP: ', otp)
+            console.log('[DEV Only] Verification Token: ', verificationToken)
+
+        } else {
+            const { subject, text, html } = otpTemplate({ email, otp })
+            await sendEmail({
+                to: email.trim().toLowerCase(),
+                subject,
+                text,
+                html,
+            })
+        }
+
+
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(
+                    200,
+                    { verificationToken },
+                    "OTP sent successfully"
+                )
+            )
+    } catch (error) {
+        console.error("Error in sendRegistrationOTP: ", error);
+        throw new ApiError(500, "Error while sending OTP");
+    }
+})
+
+
+// TODO: otp verification in registration
 const registerUser = asyncHandler(async (req, res) => {
-    const { email, password, displayName } = req.body
+    const { email, otp, verificationToken, password } = req.body
 
 
-    if ([email, password, displayName].some((field) => field?.trim() === "")) {
+    if ([email, otp, verificationToken, password].some((field) => field?.trim() === "")) {
         throw new ApiError(400, "All feild is required")
     }
 
@@ -62,23 +117,27 @@ const registerUser = asyncHandler(async (req, res) => {
     })
 
     if (existedUser) {
-        throw new ApiError(409, "User with username or email Already Existed")
+        throw new ApiError(409, "User with email Already Existed")
     }
 
-    const username = await generateUniqueUserName({ displayName });
+    // TODO: otp verification
+    const verificationResult = verifyVerificationToken(email, otp, verificationToken);
+    if (!verificationResult.isValid) {
+        throw new ApiError(401, verificationResult.message);
+    }
 
     const user = await User.create({
-        username,
         email,
         password,
-        displayName,
     });
 
     const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id)
 
-    const createdUser = await User.findById(user._id).select(
-        "-password -refreshToken"
-    )
+    const createdUser = await User
+        .findById(user._id)
+        .select(
+            "-password -refreshToken -__v -isDeleted -isBanned -createdAt -updatedAt"
+        )
 
     if (!createdUser) {
         throw new ApiError(500, "Something went wrong while registering the user")
@@ -121,7 +180,9 @@ const loginUser = asyncHandler(async (req, res) => {
 
     const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id)
 
-    const loginedUser = await User.findById(user._id).select("-password -refreshToken")
+    const loginedUser = await User
+        .findById(user._id)
+        .select("-password -refreshToken -__v -isDeleted -isBanned -createdAt -updatedAt")
 
     return res
         .status(200)
@@ -224,17 +285,111 @@ const getCurrentUser = asyncHandler(async (req, res) => {
         );
 })
 
+const completeProfileSetup = asyncHandler(async (req, res) => {
+    const { displayName, username, aboutMe } = req.body;
+    const avatarFile = req.file || req.files?.avatar?.[0];
+    const avatarLocalUrl = avatarFile?.path;
+    let uploadedAvatar = null;
+
+    try {
+        if (!displayName?.trim() || !username?.trim() || !avatarLocalUrl) {
+            throw new ApiError(400, "Display name, username and avatar are required");
+        }
+
+        if (aboutMe && aboutMe.trim().length > 100) {
+            throw new ApiError(400, "About me must be less than 100 characters");
+        }
+
+        const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+        if (avatarFile?.mimetype && !allowedMimeTypes.includes(avatarFile.mimetype)) {
+            throw new ApiError(400, "Avatar must be a jpeg, png, webp or jpg image");
+        }
+
+        const usernameExists = await User.findOne({ username: username.trim(), _id: { $ne: req.user._id } });
+        if (usernameExists) {
+            throw new ApiError(409, "Username already exists");
+        }
+
+        if (avatarLocalUrl) {
+            uploadedAvatar = await uploadOnCloudinary(avatarLocalUrl);
+
+            if (!uploadedAvatar?.url) {
+                throw new ApiError(500, "Failed to upload avatar image");
+            }
+        }
+
+        const user = await User.findById(req.user._id);
+
+        if (!user) {
+            throw new ApiError(404, "User not found");
+        }
+
+        if (user.avatarUrl && uploadedAvatar) {
+            await deleteOnCloudinary(user.avatarUrl);
+        }
+
+        user.avatarUrl = uploadedAvatar?.url ?? user.avatarUrl ?? null;
+        user.username = username.trim();
+        user.displayName = displayName.trim();
+        user.aboutMe = aboutMe?.trim() ?? null;
+        await user.save({ validateBeforeSave: false });
+
+        const updatedUser = await User.findById(user._id).select(
+            "-password -refreshToken -isDeleted -isBanned -createdAt -updatedAt"
+        );
+
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(200, updatedUser, "Profile Setup Completed successfully")
+            );
+    } catch (error) {
+        // Clean up newly uploaded avatar from cloudinary if subsequent steps failed
+        if (uploadedAvatar?.url) {
+            try {
+                await deleteOnCloudinary(uploadedAvatar.url);
+            } catch (cleanupError) {
+                console.error("Error in cleaning up avatar from Cloudinary", cleanupError);
+            }
+        }
+
+        // Clean up temp local file if still present
+        if (avatarLocalUrl && fs.existsSync(avatarLocalUrl)) {
+            try {
+                fs.unlinkSync(avatarLocalUrl);
+            } catch (unlinkError) {
+                console.error("Error unlinking local temp file", unlinkError);
+            }
+        }
+
+        if (error instanceof ApiError) {
+            throw error;
+        }
+
+        console.error("Profile setup error:", error);
+        throw new ApiError(error.statusCode || 500, error.message || "Profile Setup Failed");
+    }
+});
+
 const updateAvatar = asyncHandler(async (req, res) => {
     const avatarLocalUrl = req.file?.path;
 
     if (!avatarLocalUrl) {
-        throw new ApiError(400, "Avatar is requred")
+        throw new ApiError(400, "Avatar is required");
     }
 
-    const avatar = await uploadOnCloudinary(avatarLocalUrl)
+    const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+    if (req.file?.mimetype && !allowedMimeTypes.includes(req.file.mimetype)) {
+        if (fs.existsSync(avatarLocalUrl)) {
+            fs.unlinkSync(avatarLocalUrl);
+        }
+        throw new ApiError(400, "Avatar must be a jpeg, png, webp or jpg image");
+    }
 
-    if (!avatar) {
-        throw new ApiError(400, "Avatar is required")
+    const avatar = await uploadOnCloudinary(avatarLocalUrl);
+
+    if (!avatar?.url) {
+        throw new ApiError(500, "Avatar upload failed");
     }
 
     const user = await User.findById(req.user._id)
@@ -296,6 +451,7 @@ const updateAboutMe = asyncHandler(async (req, res) => {
 });
 
 export {
+    sendRegistrationOTP,
     loginUser,
     registerUser,
     logoutUser,
@@ -304,4 +460,5 @@ export {
     updateAvatar,
     updateDisplayName,
     updateAboutMe,
+    completeProfileSetup
 }

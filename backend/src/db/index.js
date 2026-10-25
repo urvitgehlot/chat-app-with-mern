@@ -11,6 +11,10 @@ const connectDB = async () => {
             }
         )
         console.log("\n MongoDB connected !! DB HOST: ", connectionInstance.connection.host)
+
+        // Sync indexes on server start
+        await mongoose.syncIndexes();
+        console.log("indexes synced successfully");
     } catch (error) {
         console.log("MONGODB connection FAILED ", error)
     }

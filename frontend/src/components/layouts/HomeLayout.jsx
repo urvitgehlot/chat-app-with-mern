@@ -1,119 +1,244 @@
-import React, { useEffect, useState } from 'react'
-import { Outlet } from 'react-router-dom'
-import RecentMessageComponent from '../../features/chat/components/RecentMessageComponent'
-import { useDispatch, useSelector } from 'react-redux'
-import { useChat } from '../../features/chat/useChat'
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Search, X, MessageSquarePlus, MoreVertical, LogOut, User, Sparkles, Filter } from 'lucide-react';
+import RecentMessageComponent from '../../features/chat/components/RecentMessageComponent';
+import { useChat } from '../../features/chat/useChat';
+import { useAuth } from '../../features/auth/useAuth';
+import Avatar from '../ui/Avatar';
+import IconButton from '../ui/IconButton';
+import { ChatListSkeleton } from '../ui/Skeleton';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 
 function HomeLayout() {
-    const [recentMessages, setRecentMessages] = useState([]);
+    const location = useLocation();
+    const params = useParams();
+    const navigate = useNavigate();
+    const searchInputRef = useRef(null);
 
-    const { chats, getRecentChats, } = useChat();
+    const { chats, getRecentChats, messages } = useChat();
+    const { status, userData, logout } = useAuth();
 
-    const dispatch = useDispatch();
-    const { status, userData } = useSelector((state) => state.auth);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'unread' | 'direct'
+    const [showUserMenu, setShowUserMenu] = useState(false);
+    const menuRef = useRef(null);
+
+    // If directChatId exists or we are inside a chat route, a chat is active
+    const isChatActive = Boolean(params.directChatId || params.directMsgId || location.pathname.startsWith('/direct-chat/'));
 
     useEffect(() => {
         getRecentChats();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // }, [status, userData]);
+    }, [userData?._id]);
 
-    }, [status, userData])
+    // Close user menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (menuRef.current && !menuRef.current.contains(e.target)) {
+                setShowUserMenu(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
-    if (chats.loading) {
-        return (
-            <center className='flex items-center justify-center h-screen w-screen'>
-                <span className="loader"></span>
-            </center>
-        );
-    }
-    // console.log("recentChats: ", typeof recentChats);
+    // Global keyboard shortcut: Cmd+K / Ctrl+K focuses search
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                searchInputRef.current?.focus();
+            }
+            if (e.key === 'Escape' && document.activeElement === searchInputRef.current) {
+                setSearchQuery('');
+                searchInputRef.current?.blur();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    // Filter and search conversations
+    const filteredChatIds = useMemo(() => {
+        if (!chats.id || !chats.entities) return [];
+
+        return chats.id.filter((chatId) => {
+            const chat = chats.entities[chatId];
+            if (!chat) return false;
+
+            // Filter tab logic
+            if (activeFilter === 'unread' && (!chat.unreadCount || chat.unreadCount === 0)) {
+                return false;
+            }
+
+            // Search query logic
+            if (!searchQuery.trim()) return true;
+
+            const q = searchQuery.toLowerCase().trim();
+            const otherParticipant = chat.participants?.find((p) => p._id !== userData?._id);
+            const nameMatch = otherParticipant?.displayName?.toLowerCase().includes(q) ||
+                otherParticipant?.username?.toLowerCase().includes(q);
+
+            const lastMessage = messages.entities[chat.lastMessageId];
+            const messageMatch = lastMessage?.content?.toLowerCase().includes(q);
+
+            return nameMatch || messageMatch;
+        });
+    }, [chats.id, chats.entities, activeFilter, searchQuery, userData?._id, messages.entities]);
+
+    const handleLogout = () => {
+        setShowUserMenu(false);
+        logout();
+        navigate('/login');
+    };
+
     return (
-        <div className="flex h-screen w-full">
-            {/* <!-- LEFT SIDEBAR --> */}
+        <div className="flex h-screen w-full overflow-hidden bg-bg-app">
+            {/* SIDEBAR NAVIGATION / CONVERSATIONS */}
             <aside
-                className="flex w-full md:w-[380px] lg:w-[420px] flex-col border-r border-[#232f48] bg-sidebar-dark shrink-0 h-full">
-                {/* <!-- Sidebar Header --> */}
-                <header className="flex items-center justify-between px-5 py-4 shrink-0">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-center bg-no-repeat bg-cover rounded-full size-10 border border-[#232f48] relative cursor-pointer"
-                            data-alt={`${userData?.displayName}'s profile picture`}
-                            style={{ backgroundImage: `url("${userData.avatarUrl}")` }}>
-                            <span
-                                className="absolute bottom-0 right-0 size-3 bg-[#0bda5e] border-2 border-sidebar-dark rounded-full"></span>
+                className={`flex w-full md:w-[360px] lg:w-[400px] flex-col border-r border-border bg-bg-surface shrink-0 h-full select-none ${isChatActive ? 'hidden md:flex' : 'flex'
+                    }`}
+            >
+                {/* User Header */}
+                <header className="relative flex items-center justify-between px-4 py-3.5 shrink-0 border-b border-border/60">
+                    <div
+                        onClick={() => setShowUserMenu((prev) => !prev)}
+                        className="flex items-center gap-3 cursor-pointer group p-1 -m-1 rounded-xl hover:bg-bg-hover transition-colors min-w-0"
+                    >
+                        <Avatar
+                            src={userData?.avatarUrl}
+                            name={userData?.displayName || "User"}
+                            size="md"
+                            status="online"
+                        />
+                        <div className="flex flex-col min-w-0">
+                            <span className="text-sm font-semibold text-text-primary leading-tight truncate group-hover:text-primary transition-colors">
+                                {userData?.displayName || "User"}
+                            </span>
+                            <span className="text-xs text-text-muted truncate">
+                                @{userData?.username || "online"}
+                            </span>
                         </div>
                     </div>
-                    <div className="flex gap-2">
-                        <button
-                            className="flex items-center justify-center size-10 rounded-full hover:bg-surface-dark transition-colors text-[#92a4c9] hover:text-white">
-                            <span className="material-symbols-outlined text-[24px]">chat_add_on</span>
-                        </button>
-                        <button
-                            className="flex items-center justify-center size-10 rounded-full hover:bg-surface-dark transition-colors text-[#92a4c9] hover:text-white">
-                            <span className="material-symbols-outlined text-[24px]">more_vert</span>
-                        </button>
+
+                    <div className="flex items-center gap-1 shrink-0 relative" ref={menuRef}>
+                        <IconButton
+                            icon={MoreVertical}
+                            size="md"
+                            title="Account menu"
+                            active={showUserMenu}
+                            onClick={() => setShowUserMenu((prev) => !prev)}
+                        />
+
+                        {/* User Menu Dropdown */}
+                        {showUserMenu && (
+                            <div className="absolute right-0 top-11 w-52 rounded-xl bg-bg-elevated border border-border shadow-2xl p-1.5 z-50 animate-popup">
+                                <div className="px-3 py-2 border-b border-border/50 mb-1">
+                                    <p className="text-xs font-semibold text-text-primary truncate">{userData?.displayName}</p>
+                                    <p className="text-[11px] text-text-muted truncate">{userData?.email}</p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowUserMenu(false);
+                                        navigate('/profile-complete');
+                                    }}
+                                    className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors cursor-pointer"
+                                >
+                                    <User size={15} />
+                                    <span>Edit Profile</span>
+                                </button>
+                                <button
+                                    onClick={handleLogout}
+                                    className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                >
+                                    <LogOut size={15} />
+                                    <span>Log out</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </header>
-                {/* <!-- Search Bar --> */}
-                <div className="px-5 pb-2 shrink-0">
-                    <div
-                        className="flex w-full items-center rounded-lg bg-surface-dark h-10 border border-transparent focus-within:border-primary/50 transition-colors">
-                        <div className="flex items-center justify-center pl-3 pr-2 text-[#92a4c9]">
-                            <span className="material-symbols-outlined text-[20px]">search</span>
-                        </div>
+
+                {/* Search Bar with Command Hint */}
+                <div className="px-3.5 pt-3 pb-1.5 shrink-0">
+                    <div className="relative flex items-center w-full rounded-xl bg-bg-card border border-border focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
+                        <Search className="size-4 text-text-muted ml-3 shrink-0" strokeWidth={2} />
                         <input
-                            className="w-full bg-transparent border-none text-sm text-white placeholder-[#92a4c9] focus:ring-0 p-0 pr-3 h-full"
-                            placeholder="Search or start new chat" type="text" />
+                            ref={searchInputRef}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-transparent border-none text-xs sm:text-sm text-text-primary placeholder:text-text-muted px-2.5 py-2 focus:outline-none"
+                            placeholder="Search conversations..."
+                            type="text"
+                        />
+                        {searchQuery ? (
+                            <button
+                                onClick={() => {
+                                    setSearchQuery('');
+                                    searchInputRef.current?.focus();
+                                }}
+                                className="mr-2 p-1 text-text-muted hover:text-text-primary rounded cursor-pointer"
+                            >
+                                <X size={14} />
+                            </button>
+                        ) : (
+                            <kbd className="hidden sm:inline-flex items-center mr-2 px-1.5 py-0.5 text-[10px] font-mono text-text-muted bg-bg-surface border border-border/80 rounded">
+                                ⌘K
+                            </kbd>
+                        )}
                     </div>
                 </div>
-                {/* <!-- Filters / Tags (Optional visual flair) --> */}
-                <div className="px-5 py-3 flex gap-2 shrink-0 overflow-x-auto custom-scrollbar">
+
+                {/* Filter Pills */}
+                <div className="px-3.5 py-2 flex items-center gap-1.5 shrink-0 overflow-x-auto scrollbar-hide">
                     <button
-                        className="px-3 py-1 rounded-full bg-surface-dark text-xs font-medium text-white whitespace-nowrap hover:bg-primary hover:text-white transition-colors">All</button>
+                        onClick={() => setActiveFilter('all')}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${activeFilter === 'all'
+                            ? 'bg-primary text-white shadow-xs'
+                            : 'bg-bg-card border border-border text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                            }`}
+                    >
+                        All
+                    </button>
                     <button
-                        className="px-3 py-1 rounded-full bg-transparent border border-surface-dark text-xs font-medium text-[#92a4c9] whitespace-nowrap hover:bg-surface-dark hover:text-white transition-colors">Unread</button>
-                    <button
-                        className="px-3 py-1 rounded-full bg-transparent border border-surface-dark text-xs font-medium text-[#92a4c9] whitespace-nowrap hover:bg-surface-dark hover:text-white transition-colors">Groups</button>
-                    <button
-                        className="px-3 py-1 rounded-full bg-transparent border border-surface-dark text-xs font-medium text-[#92a4c9] whitespace-nowrap hover:bg-surface-dark hover:text-white transition-colors">Archived</button>
+                        onClick={() => setActiveFilter('unread')}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${activeFilter === 'unread'
+                            ? 'bg-primary text-white shadow-xs'
+                            : 'bg-bg-card border border-border text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                            }`}
+                    >
+                        Unread
+                    </button>
                 </div>
-                {/* <!-- Chat List --> */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col scrollbar-hide">
-                    {/* recentChats is a list of dictionary */}
-                    {
-                        chats.id.map((chatId) => {
+
+                {/* Conversation List */}
+                <div className="flex-1 overflow-y-auto scrollbar-hide py-1">
+                    {chats.loading ? (
+                        <ChatListSkeleton count={7} />
+                    ) : filteredChatIds.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-48 px-6 text-center">
+                            <p className="text-xs font-medium text-text-muted">
+                                {searchQuery ? 'No matching conversations' : 'No conversations yet'}
+                            </p>
+                            <p className="text-[11px] text-text-disabled mt-1">
+                                {searchQuery ? 'Try searching a different name or keyword' : 'New messages will appear here'}
+                            </p>
+                        </div>
+                    ) : (
+                        filteredChatIds.map((chatId) => {
                             const chat = chats.entities[chatId];
-                            // console.log(chat.);
-                            return <RecentMessageComponent
-                                key={chatId}
-                                chat={chat}
-                            // chatId={chatId}
-                            // userName={message['user']['username']}
-                            // userImage={message.user.avatarUrl}
-                            // recentMessage={message.content}
-                            // sentByCurrentUser={message.senderId === userData._id}
-                            // unreadCount={1}
-                            // recentMessageDate={message.sentAt}
-                            />
+                            if (!chat) return null;
+                            return <RecentMessageComponent key={chatId} chat={chat} />;
                         })
-
-                    }
-                    {/* {Object.entries(recentChats).map(([chatId, message]) => {
-                        return <RecentMessageComponent
-                            key={chatId}
-                            chatId={chatId}
-                            userName={message['user']['username']}
-                            userImage={message.user.avatarUrl}
-                            recentMessage={message.content}
-                            sentByCurrentUser={message.senderId === userData._id}
-                            unreadCount={1}
-                            recentMessageDate={message.sentAt}
-                        />
-                    })} */}
-
+                    )}
                 </div>
             </aside>
-            {/* <!-- RIGHT MAIN CONTENT  --> */}
+
+            {/* MAIN STAGE / CONVERSATION AREA */}
             <Outlet />
         </div>
-    )
+    );
 }
 
-export default HomeLayout
+export default HomeLayout;

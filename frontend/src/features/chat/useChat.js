@@ -1,15 +1,13 @@
-import { useDispatch, useSelector } from "react-redux"
+import { useDispatch, useSelector } from "react-redux";
 import {
     getRecentChatsAsync,
     getUserDirectChatMessagesAsync,
     getChatMessagesByPageAsync,
     joinChat as joinChatAction,
-    // toggleTyping as toggleTypingAction,
-    sendMessage as sendMessageAction,
+    closeChat as closeChatAction,
     messageReceived as messageReceivedAction,
     sendMessageAsync
 } from "./chatSlice";
-import { validateAndCreateMessage } from "./message.schema";
 
 
 export const useChat = () => {
@@ -33,36 +31,15 @@ export const useChat = () => {
         dispatch(joinChatAction({ chatId, chatType }));
     }
 
+    const closeChat = () => {
+        dispatch(closeChatAction());
+    }
+
     // const toggleTyping = ({ startTyping = true }) => {
     //     dispatch(toggleTypingAction({ chatId, type }));
     // }
 
-    // const sendMessage = ({ tempId, content, chatType, chatId, sentTo, senderId, sendByMe = true, replyToMessageId }) => {
-    //     dispatch(sendMessageAction({ tempId, content, chatType, chatId, sentTo, senderId, sendByMe, replyToMessageId }));
-    // }
-
-    // const sendMessage = ({ tempId, content, chatType, chatId, sentTo, senderId, sendByMe = true, replyToMessageId }) => {
-    //     dispatch(sendMessageAsync({ tempId, content, chatType, chatId, sentTo, senderId, sendByMe, replyToMessageId }));
-    // }
-
-    // const sendMessage = (
-    //     {
-    //         tempId,
-    //         content,
-    //         chatType,
-    //         chatId,
-    //         sentTo,
-    //         senderId,
-    //         sendByMe = true,
-    //         replyToMessageId
-    //     },
-    // ) => {
-    //     dispatch(sendMessageAsync({ tempId, content, chatType, chatId, sentTo, senderId, sendByMe, replyToMessageId }));
-    // };
-
     const sendMessage = (message) => {
-        // const validatedMessage = validateAndCreateMessage(messageInput);
-        // console.log("validatedMessage: ", validatedMessage);
         dispatch(sendMessageAsync(message));
     }
 
@@ -77,6 +54,7 @@ export const useChat = () => {
         getUserDirectChatMessages,
         getChatMessagesByPage,
         joinChat,
+        closeChat,
         sendMessage,
     }
 }
