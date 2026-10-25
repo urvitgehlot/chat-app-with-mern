@@ -85,6 +85,8 @@ const sendMessage = asyncHandler(async (req, res) => {
                     directChat = await DirectChat.create({
                         participants: sortedParticipants,
                         chatCreatedBy: senderId,
+                        unreadCount: 0,
+                        lastMessageId: null,
                     });
 
                     await directChat.populate("participants", "_id displayName username avatarUrl lastActiveAt");
@@ -99,7 +101,16 @@ const sendMessage = asyncHandler(async (req, res) => {
                     replyToMessageId: replyToMessageId || null,
                 });
 
-
+                directChat = await DirectChat.findByIdAndUpdate(directChat._id, {
+                    $set: {
+                        lastMessageId: message._id
+                    },
+                    $inc: {
+                        unreadCount: 1
+                    }
+                }, {
+                    new: true
+                });
 
                 attachments.forEach(async (attachment) => {
                     await Attachment.create({
@@ -112,9 +123,17 @@ const sendMessage = asyncHandler(async (req, res) => {
 
                 });
 
-                await directChat.populate('participants', "_id displayName username avatarUrl lastActiveAt")
+                await directChat.populate('participants', "_id displayName username avatarUrl lastActiveAt");
+                await directChat.populate({
+                    path: 'lastMessageId',
+                    populate: {
+                        path: 'senderId',
+                        select: '_id displayName username avatarUrl',
+                    },
+                });
 
                 await message.populate("senderId", "_id displayName username avatarUrl");
+                // await message.populate("replyToMessageId", "_id content attachments.fileType attachments.fileUrl senderId");
 
                 if (receiverSocketId) {
                     io.to(receiverSocketId).emit('receive_message', {

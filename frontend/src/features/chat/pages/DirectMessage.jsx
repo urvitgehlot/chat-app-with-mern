@@ -61,7 +61,52 @@ function DirectMessage() {
         }
     }, [isLoading]);
 
-    // Infinite scroll for older messages
+    const loadNextPage = () => {
+        if (!hasMore || chats.loading || isFetchingRef.current) return;
+
+        isFetchingRef.current = true;
+        getChatMessagesByPage({
+            chatId: directChatId,
+            page: (chatMessagesState?.currentPage || 1) + 1,
+            limit: 20,
+            chatType: "direct",
+        });
+    };
+
+    // Auto-fetch next page when 30% or less of the scroll distance to the top is left
+    useEffect(() => {
+        const scrollContainer = chatRef.current;
+        if (!scrollContainer) return;
+
+        const handleScroll = () => {
+            if (!hasMore || chats.loading || isFetchingRef.current) return;
+
+            const { scrollHeight, clientHeight, scrollTop } = scrollContainer;
+            const maxScroll = scrollHeight - clientHeight;
+            if (maxScroll <= 0) return;
+
+            // In flex-col-reverse (Chromium/Firefox/Safari), scrollTop is 0 at bottom (newest) and -maxScroll at top (oldest).
+            // In standard scroll, scrollTop is maxScroll at bottom and 0 at top.
+            let remainingToTop = maxScroll;
+            if (scrollTop < 0) {
+                remainingToTop = maxScroll - Math.abs(scrollTop);
+            } else if (scrollTop > 0) {
+                remainingToTop = scrollTop;
+            }
+
+            const scrollPercentageLeft = remainingToTop / maxScroll;
+
+            if (scrollPercentageLeft <= 0.3) {
+                loadNextPage();
+            }
+        };
+
+        scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+        return () => scrollContainer.removeEventListener('scroll', handleScroll);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [directChatId, hasMore, chats.loading, chatMessagesState?.currentPage]);
+
+    // Top sentinel observer fallback
     useEffect(() => {
         const topElement = chatTopRef.current;
         const scrollContainer = chatRef.current;
@@ -69,14 +114,8 @@ function DirectMessage() {
         if (!topElement || !scrollContainer || !hasMore || chats.loading) return;
 
         const observer = new IntersectionObserver(([entry]) => {
-            if (entry.isIntersecting && !isFetchingRef.current && hasMore && !chats.loading) {
-                isFetchingRef.current = true;
-                getChatMessagesByPage({
-                    chatId: directChatId,
-                    page: (chatMessagesState?.currentPage || 1) + 1,
-                    limit: 20,
-                    chatType: "direct",
-                });
+            if (entry.isIntersecting) {
+                loadNextPage();
             }
         }, {
             root: scrollContainer,
@@ -148,9 +187,8 @@ function DirectMessage() {
                                 </h2>
                                 <div className="flex items-center gap-1.5 mt-0.5">
                                     <span
-                                        className={`size-1.5 rounded-full ${
-                                            isUserOnline ? "bg-emerald-500 animate-pulse" : "bg-slate-500"
-                                        }`}
+                                        className={`size-1.5 rounded-full ${isUserOnline ? "bg-emerald-500 animate-pulse" : "bg-slate-500"
+                                            }`}
                                     />
                                     <span className="text-[11px] text-text-muted">
                                         {isUserOnline ? "Active now" : "Offline"}

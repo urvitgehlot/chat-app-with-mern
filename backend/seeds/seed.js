@@ -1,7 +1,7 @@
 import connectDB from "../src/db/index.js"
 import mongoose from "mongoose";
 import { generateUsers } from "./users.seed.js";
-import { generateDirectChats } from "./directChat.seed.js";
+import { generateDirectChats, updateDirectChatsLastMessage } from "./directChat.seed.js";
 import { generateMessages } from "./message.seed.js";
 import { generateGroupMemberShip, generateGroups } from "./groups.seed.js";
 
@@ -30,6 +30,10 @@ const runSeed = async () => {
         // const messages = await generateMessages(directChats, 1000);
         const messages = await generateMessages(directChats, 10000000);
         console.log("Messages seeded successfully!");
+
+        console.log("Updating Direct Chats with lastMessageId and unreadCount...");
+        await updateDirectChatsLastMessage(directChats);
+        console.log("Direct Chats updated successfully!");
 
         console.log("Seeding Groups...");
         // const groups = await generateGroups(users, 5);

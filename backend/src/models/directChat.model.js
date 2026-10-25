@@ -24,6 +24,14 @@ const directchatSchema = new Schema(
             ref: "User",
             required: true,
         },
+        lastMessageId: {
+            type: Schema.Types.ObjectId,
+            ref: "Message",
+        },
+        unreadCount: {
+            type: Number,
+            default: 0,
+        },
         // typingUsers: [
         //     {
         //         type: Schema.Types.ObjectId,

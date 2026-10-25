@@ -4,6 +4,7 @@ import asyncHandler from "../utils/asyncHandler.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import { ReadReceipt } from "../models/readReceipt.model.js";
 import { ConversationReadState } from "../models/ConversationReadState.model.js";
+import { DirectChat } from "../models/directChat.model.js";
 
 
 
@@ -112,6 +113,12 @@ const readReceiptAllMessages = asyncHandler(async (req, res) => {
 
     const acknowledged = await ReadReceipt.insertMany(readReceipts);
     console.log("acknowledged: ", acknowledged);
+
+    if (chatType === "direct") {
+        await DirectChat.findByIdAndUpdate(chatId, {
+            $set: { unreadCount: 0 }
+        });
+    }
 
     console.log("messageUnread: ", messageUnread);
 

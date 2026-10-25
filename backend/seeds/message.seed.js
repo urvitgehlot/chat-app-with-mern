@@ -24,7 +24,7 @@ const generateMessages = async (chats, count = 10) => {
             batch[i] = {
                 chatType: 'direct',
                 directChat: chat._id,
-                senderId: sender._id,
+                senderId: sender?._id || sender,
                 content: getRandomItem(sampleSentences),
                 sentAt: new Date(start + Math.random() * timeSpan),
             };

@@ -32,6 +32,9 @@ const createDirectChat = asyncHandler(async (req, res) => {
 
     const directChat = await DirectChat.create({
         participants: [req.user._id, userId],
+        chatCreatedBy: req.user._id,
+        unreadCount: 0,
+        lastMessageId: null,
     });
 
     return res.status(201).json(new ApiResponse(201, directChat, "Direct Chat created successfully"));
@@ -41,7 +44,15 @@ const getUserDirectChats = asyncHandler(async (req, res) => {
 
     const directChats = await DirectChat.find({
         participants: req.user._id,
-    }).populate("participants", "_id displayName username avatarUrl lastActiveAt");
+    })
+        .populate("participants", "_id displayName username avatarUrl lastActiveAt")
+        .populate({
+            path: 'lastMessageId',
+            populate: {
+                path: 'senderId',
+                select: '_id displayName username avatarUrl',
+            },
+        });
 
     return res.status(200).json(new ApiResponse(200, directChats, "Direct Chats fetched successfully"));
 });
@@ -349,7 +360,24 @@ const getRecentChats = asyncHandler(async (req, res) => {
     ];
 
 
-    const recentChats = await DirectChat.aggregate(pipeline);
+    // const recentChats = await DirectChat.aggregate(pipeline);
+
+
+    const recentChats = await DirectChat.find({
+        participants: req.user._id,
+    })
+        .sort({ updatedAt: -1 })
+        // .limit($limit)
+        .populate('participants', "_id displayName username avatarUrl lastActiveAt")
+        .populate({
+            path: 'lastMessageId',
+            populate: {
+                path: 'senderId',
+                select: '_id displayName username avatarUrl',
+            },
+        })
+        .lean();
+
 
 
 

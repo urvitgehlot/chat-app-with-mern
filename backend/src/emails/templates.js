@@ -1,9 +1,9 @@
 
 
 export const welcomeTemplate = (name) => {
-    const subject = "Welcome to Chatter";
-    const text = `Hello ${name}, Welcome to Chatter`
-    const html = `
+  const subject = "Welcome to Chatter";
+  const text = `Hello ${name}, Welcome to Chatter`
+  const html = `
     <!DOCTYPE html>
 <html>
 <head>
@@ -83,14 +83,14 @@ export const welcomeTemplate = (name) => {
 </body>
 </html>
     `
-    return { subject, text, html };
+  return { subject, text, html };
 }
 
 
 export const otpTemplate = ({ email, otp }) => {
-    const subject = "OTP for your account";
-    const text = `Your OTP is ${otp}`
-    const html = `
+  const subject = "OTP for your account";
+  const text = `Your OTP is ${otp}`
+  const html = `
     <!DOCTYPE html>
 <html>
 
@@ -178,5 +178,5 @@ export const otpTemplate = ({ email, otp }) => {
 
 </html>
     `;
-    return { subject, text, html };
+  return { subject, text, html };
 }

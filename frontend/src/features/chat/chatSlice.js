@@ -237,7 +237,7 @@ export const receiveMessageAsync = createAsyncThunk("chat/receiveMessage", async
                 _id: chatKey,
                 chatId: data.chat._id,
                 chatType: data.message.chatType,
-                lastMessage: message._id,
+                lastMessageId: message._id,
                 updatedAt: message.updatedAt,
                 sentAt: message.sentAt,
                 unreadCount: 1,
@@ -349,16 +349,17 @@ export const putCachedMessageAsync = createAsyncThunk("chat/putCachedMessage", a
         const { tempId, message, chat, isNewChat } = data;
         const loggedInUserId = getState().auth.userData._id;
 
+        const chatKey = createChatKey(message.chatType, chat._id);
         if (isNewChat) {
             chatStore.put({
-                _id: chat._id,
-                chatType: "direct",
+                _id: chatKey,
+                chatType: message.chatType,
                 unreadCount: 1,
                 lastMessageId: message._id,
             });
         } else {
             await chatStore.updateLastMessage({
-                chatId: chat._id,
+                chatKey,
                 lastMessageId: message._id,
                 unreadCount: 0,
             });
@@ -388,7 +389,17 @@ const chatSlice = createSlice({
     initialState,
     reducers: {
         joinChat: (state, action) => {
-            state.activeChatKey = createChatKey(action.payload.chatType, action.payload.chatId);
+            const chatKey = createChatKey(action.payload.chatType, action.payload.chatId);
+            state.activeChatKey = chatKey;
+            if (state.chats.entities[chatKey]) {
+                state.chats.entities[chatKey].unreadCount = 0;
+            }
+        },
+        markChatAsRead: (state, action) => {
+            const chatKey = createChatKey(action.payload.chatType, action.payload.chatId);
+            if (state.chats.entities[chatKey]) {
+                state.chats.entities[chatKey].unreadCount = 0;
+            }
         },
         closeChat: (state, action) => {
             state.activeChatKey = null;
@@ -417,48 +428,56 @@ const chatSlice = createSlice({
             .addCase(getRecentChatsAsync.fulfilled, (state, action) => {
 
 
-                for (const value of action.payload.data) {
-                    if (value.lastMessage.chatType === "direct") {
-                        const chatKey = createChatKey("direct", value._id);
-                        if (state.users.entities[value.participants[0]._id] == null) {
-                            state.users.entities[value.participants[0]._id] = value.participants[0];
-                        }
+                for (const value of (action.payload?.data || [])) {
+                    const chatKey = createChatKey("direct", value._id);
 
-                        if (state.users.entities[value.participants[1]._id] == null) {
-                            state.users.entities[value.participants[1]._id] = value.participants[1];
+                    if (Array.isArray(value.participants)) {
+                        for (const participant of value.participants) {
+                            if (participant?._id && state.users.entities[participant._id] == null) {
+                                state.users.entities[participant._id] = participant;
+                            }
                         }
+                    }
 
-                        if (state.chats.entities[chatKey] == null) {
-                            state.chats.id.push(chatKey);
-                        }
+                    if (!state.chats.id.includes(chatKey)) {
+                        state.chats.id.push(chatKey);
+                    }
 
-                        if (state.messages.byChatKey[chatKey] == null && value.lastMessage != null) {
+                    const lastMessage = value.lastMessageId && typeof value.lastMessageId === 'object'
+                        ? value.lastMessageId
+                        : null;
+                    const lastMessageId = lastMessage ? lastMessage._id : (value.lastMessageId || null);
+
+                    if (lastMessage) {
+                        if (state.messages.byChatKey[chatKey] == null) {
                             state.messages.byChatKey[chatKey] = {
-                                ids: [value.lastMessage._id],
+                                ids: [lastMessage._id],
                                 typingUsers: [],
                                 hasMore: true,
                                 loading: false,
                                 error: null,
-                            }
-
-                            state.messages.entities[value.lastMessage._id] = {
-                                chatId: value._id,
-                                ...value.lastMessage,
-                            }
+                            };
+                        } else if (!state.messages.byChatKey[chatKey].ids.includes(lastMessage._id)) {
+                            state.messages.byChatKey[chatKey].ids.unshift(lastMessage._id);
                         }
 
-                        state.chats.entities[chatKey] = {
-                            chatType: "direct",
+                        state.messages.entities[lastMessage._id] = {
                             chatId: value._id,
-                            lastMessageId: value.lastMessage?._id,
-                            chatCreatedBy: value.chatCreatedBy,
-                            participants: value.participants,
-                            createdAt: value.createdAt,
-                            updatedAt: value.updatedAt,
-                            unreadCount: value.unreadCount,
-                        }
+                            chatType: "direct",
+                            ...lastMessage,
+                        };
                     }
 
+                    state.chats.entities[chatKey] = {
+                        chatType: "direct",
+                        chatId: value._id,
+                        lastMessageId: lastMessageId,
+                        chatCreatedBy: value.chatCreatedBy,
+                        participants: value.participants,
+                        createdAt: value.createdAt,
+                        updatedAt: value.updatedAt,
+                        unreadCount: value.unreadCount || 0,
+                    };
                 }
 
                 state.chats.loading = false;
@@ -773,5 +792,5 @@ const chatSlice = createSlice({
     }
 });
 
-export const { addMessage, joinChat, closeChat, messageReceived } = chatSlice.actions;
+export const { addMessage, joinChat, markChatAsRead, closeChat, messageReceived } = chatSlice.actions;
 export default chatSlice.reducer;

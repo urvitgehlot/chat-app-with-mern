@@ -4,6 +4,7 @@ import {
     getUserDirectChatMessagesAsync,
     getChatMessagesByPageAsync,
     joinChat as joinChatAction,
+    markChatAsRead as markChatAsAction,
     closeChat as closeChatAction,
     messageReceived as messageReceivedAction,
     sendMessageAsync
@@ -31,6 +32,10 @@ export const useChat = () => {
         dispatch(joinChatAction({ chatId, chatType }));
     }
 
+    const markChatAsRead = ({ chatId, chatType }) => {
+        dispatch(markChatAsAction({ chatId, chatType }));
+    }
+
     const closeChat = () => {
         dispatch(closeChatAction());
     }
@@ -54,6 +59,7 @@ export const useChat = () => {
         getUserDirectChatMessages,
         getChatMessagesByPage,
         joinChat,
+        markChatAsRead,
         closeChat,
         sendMessage,
     }
