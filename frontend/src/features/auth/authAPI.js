@@ -23,3 +23,6 @@ export const refreshAccessToken = () => axios.post(
     {},
     { withCredentials: true }
 ).then((res) => res.data);
+
+export const searchUsers = (query, limit = 20) =>
+    api.get(`${usersApi}/find-users`, { params: { query, limit } }).then((res) => res.data);

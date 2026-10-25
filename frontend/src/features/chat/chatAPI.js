@@ -13,5 +13,7 @@ export const getChatMessagesByPage = async (data) => api.get(`${messageApi}/get-
 
 export const sendMessage = async (message) => api.post(`${messageApi}/send-message`, message).then((res) => res.data);
 
+export const createDirectChat = async (userId) => api.post(`${directChatApi}/create-direct-chat`, { userId }).then((res) => res.data);
+
 
 

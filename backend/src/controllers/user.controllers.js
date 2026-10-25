@@ -450,6 +450,30 @@ const updateAboutMe = asyncHandler(async (req, res) => {
         );
 });
 
+const searchUsers = asyncHandler(async (req, res) => {
+    const { query, limit } = req.query;
+
+    if (!query || typeof query !== "string" || !query.trim()) {
+        throw new ApiError(400, "Query is required");
+    }
+
+    const sanitizedQuery = query.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 50);
+
+    const users = await User.find({
+        _id: { $ne: req.user._id },
+        $or: [
+            { displayName: { $regex: sanitizedQuery, $options: "i" } },
+            { username: { $regex: sanitizedQuery, $options: "i" } },
+        ],
+    })
+        .limit(parsedLimit)
+        .select("_id displayName username avatarUrl lastActiveAt aboutMe");
+
+    return res.status(200).json(new ApiResponse(200, users, "Users fetched successfully"));
+});
+
+
 export {
     sendRegistrationOTP,
     loginUser,
@@ -460,5 +484,6 @@ export {
     updateAvatar,
     updateDisplayName,
     updateAboutMe,
-    completeProfileSetup
+    completeProfileSetup,
+    searchUsers
 }

@@ -1,6 +1,7 @@
 import { useDispatch, useSelector } from "react-redux";
 import {
     getRecentChatsAsync,
+    createDirectChatAsync,
     getUserDirectChatMessagesAsync,
     getChatMessagesByPageAsync,
     joinChat as joinChatAction,
@@ -44,6 +45,11 @@ export const useChat = () => {
     //     dispatch(toggleTypingAction({ chatId, type }));
     // }
 
+    const createDirectChat = async (userId) => {
+        const result = await dispatch(createDirectChatAsync({ userId })).unwrap();
+        return result;
+    }
+
     const sendMessage = (message) => {
         dispatch(sendMessageAsync(message));
     }
@@ -56,6 +62,7 @@ export const useChat = () => {
         queuedMessages,
         activeChatKey,
         getRecentChats,
+        createDirectChat,
         getUserDirectChatMessages,
         getChatMessagesByPage,
         joinChat,

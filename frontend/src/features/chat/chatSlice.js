@@ -265,6 +265,15 @@ export const receiveMessageAsync = createAsyncThunk("chat/receiveMessage", async
     }
 });
 
+export const createDirectChatAsync = createAsyncThunk("chat/createDirectChat", async ({ userId }, { rejectWithValue }) => {
+    try {
+        const response = await chatAPI.createDirectChat(userId);
+        return response.data;
+    } catch (error) {
+        return rejectWithValue(error.response?.data?.message || "Failed to create direct chat");
+    }
+});
+
 export const getRecentChatsAsync = createAsyncThunk('chat/getRecentChats', async (_, { rejectWithValue }) => {
     try {
         const response = await chatAPI.getRecentChats();
@@ -486,6 +495,37 @@ const chatSlice = createSlice({
             .addCase(getRecentChatsAsync.rejected, (state, action) => {
                 state.chats.error = action.payload;
                 state.chats.loading = false;
+            })
+            // createDirectChatAsync
+            .addCase(createDirectChatAsync.fulfilled, (state, action) => {
+                const directChat = action.payload;
+                if (!directChat?._id) return;
+
+                const chatKey = createChatKey("direct", directChat._id);
+                if (Array.isArray(directChat.participants)) {
+                    for (const participant of directChat.participants) {
+                        if (participant?._id && state.users.entities[participant._id] == null) {
+                            state.users.entities[participant._id] = participant;
+                        }
+                    }
+                }
+
+                if (!state.chats.id.includes(chatKey)) {
+                    state.chats.id.unshift(chatKey);
+                }
+
+                if (!state.chats.entities[chatKey]) {
+                    state.chats.entities[chatKey] = {
+                        chatType: "direct",
+                        chatId: directChat._id,
+                        lastMessageId: directChat.lastMessageId?._id || directChat.lastMessageId || null,
+                        chatCreatedBy: directChat.chatCreatedBy,
+                        participants: directChat.participants,
+                        createdAt: directChat.createdAt,
+                        updatedAt: directChat.updatedAt,
+                        unreadCount: directChat.unreadCount || 0,
+                    };
+                }
             })
             // getChatMessagesByPageAsync
             .addCase(getChatMessagesByPageAsync.pending, (state, action) => {

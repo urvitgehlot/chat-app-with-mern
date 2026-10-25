@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { completeProfileSetup, getCurrentUser, loginUser, logoutUser, refreshAccessToken, registerUser, sendRegistrationOTP, updateAboutMe, updateAvatar, updateDisplayName } from "../controllers/user.controllers.js";
+import { completeProfileSetup, getCurrentUser, loginUser, logoutUser, refreshAccessToken, registerUser, searchUsers, sendRegistrationOTP, updateAboutMe, updateAvatar, updateDisplayName } from "../controllers/user.controllers.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { createTokenBucketLimiter } from "../middlewares/tokenBucket.middleware.js";
@@ -453,5 +453,41 @@ router.route('/update-aboutme').patch(verifyJWT, updateAboutMe)
  *         description: Internal server error
  */
 router.route('/update-displayname').patch(verifyJWT, updateDisplayName)
+
+/**
+ * @swagger
+ * /api/v1/users/find-users:
+ *   get:
+ *     summary: Search for users
+ *     description: Searches for users by display name or username.
+ *     tags: [Users]
+ *     security: 
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: query
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The search query
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         required: false
+ *         description: Maximum number of users to return
+ *     responses:
+ *       200:
+ *         description: Users found successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       400:
+ *         description: Query is required
+ *       500:
+ *         description: Internal server error
+ */
+router.route('/find-users').get(verifyJWT, searchUsers);
 
 export default router;

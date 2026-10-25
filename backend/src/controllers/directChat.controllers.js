@@ -27,6 +27,14 @@ const createDirectChat = asyncHandler(async (req, res) => {
     });
 
     if (existedDirectChat) {
+        await existedDirectChat.populate("participants", "_id displayName username avatarUrl lastActiveAt");
+        await existedDirectChat.populate({
+            path: 'lastMessageId',
+            populate: {
+                path: 'senderId',
+                select: '_id displayName username avatarUrl',
+            },
+        });
         return res.status(200).json(new ApiResponse(200, existedDirectChat, "Direct Chat already exists"));
     }
 
@@ -36,6 +44,7 @@ const createDirectChat = asyncHandler(async (req, res) => {
         unreadCount: 0,
         lastMessageId: null,
     });
+    await directChat.populate("participants", "_id displayName username avatarUrl lastActiveAt");
 
     return res.status(201).json(new ApiResponse(201, directChat, "Direct Chat created successfully"));
 });
