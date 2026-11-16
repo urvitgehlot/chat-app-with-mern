@@ -408,5 +408,5 @@ const getRecentChats = asyncHandler(async (req, res) => {
 export {
     createDirectChat,
     getUserDirectChats,
-    getRecentChats,
+    // getRecentChats,
 }

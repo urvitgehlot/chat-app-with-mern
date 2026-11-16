@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Search, X, MessageSquarePlus, MoreVertical, LogOut, User, Sparkles, Filter, UserPlus, MessageSquare, Loader2 } from 'lucide-react';
+import { Search, X, MessageSquarePlus, MoreVertical, LogOut, User, Sparkles, Filter, UserPlus, MessageSquare, Loader2, Users } from 'lucide-react';
 import RecentMessageComponent from '../../features/chat/components/RecentMessageComponent';
 import UserSearchModal from '../../features/chat/components/UserSearchModal';
+import CreateGroupModal from '../../features/chat/components/CreateGroupModal';
 import { useChat } from '../../features/chat/useChat';
 import { useAuth } from '../../features/auth/useAuth';
 import { searchUsers } from '../../features/auth/authAPI';
@@ -24,13 +25,20 @@ function HomeLayout() {
     const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'unread' | 'find-users'
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [showUserSearchModal, setShowUserSearchModal] = useState(false);
+    const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
     const [searchedUsers, setSearchedUsers] = useState([]);
     const [isSearchingUsers, setIsSearchingUsers] = useState(false);
     const [isStartingChat, setIsStartingChat] = useState(null);
     const menuRef = useRef(null);
 
-    // If directChatId exists or we are inside a chat route, a chat is active
-    const isChatActive = Boolean(params.directChatId || params.directMsgId || location.pathname.startsWith('/direct-chat/'));
+    // If directChatId or group id exists or we are inside a chat route, a chat is active
+    const isChatActive = Boolean(
+        params.directChatId ||
+        params.directMsgId ||
+        params.id ||
+        location.pathname.startsWith('/direct-chat/') ||
+        location.pathname.startsWith('/group-chat/')
+    );
 
     useEffect(() => {
         getRecentChats();
@@ -182,6 +190,12 @@ function HomeLayout() {
 
                     <div className="flex items-center gap-1 shrink-0 relative" ref={menuRef}>
                         <IconButton
+                            icon={Users}
+                            size="md"
+                            title="Create new group"
+                            onClick={() => setShowCreateGroupModal(true)}
+                        />
+                        <IconButton
                             icon={UserPlus}
                             size="md"
                             title="Find users / Start new chat"
@@ -202,6 +216,16 @@ function HomeLayout() {
                                     <p className="text-xs font-semibold text-text-primary truncate">{userData?.displayName}</p>
                                     <p className="text-[11px] text-text-muted truncate">{userData?.email}</p>
                                 </div>
+                                <button
+                                    onClick={() => {
+                                        setShowUserMenu(false);
+                                        setShowCreateGroupModal(true);
+                                    }}
+                                    className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors cursor-pointer"
+                                >
+                                    <Users size={15} />
+                                    <span>Create Group</span>
+                                </button>
                                 <button
                                     onClick={() => {
                                         setShowUserMenu(false);
@@ -399,6 +423,12 @@ function HomeLayout() {
             <UserSearchModal
                 isOpen={showUserSearchModal}
                 onClose={() => setShowUserSearchModal(false)}
+            />
+
+            {/* Create Group Modal */}
+            <CreateGroupModal
+                isOpen={showCreateGroupModal}
+                onClose={() => setShowCreateGroupModal(false)}
             />
         </div>
     );

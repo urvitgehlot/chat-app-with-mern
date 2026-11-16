@@ -1,5 +1,5 @@
 import { refreshTokenAsync } from "../features/auth/authSlice";
-import { messageReceived, receiveMessageAsync } from "../features/chat/chatSlice";
+import { messageReceived, messageReadReceiptReceived, receiveMessageAsync } from "../features/chat/chatSlice";
 import { initialsSocketConnection, disconnectSocket, getSocket } from "../services/socket";
 
 let isInitialized = false;
@@ -46,6 +46,11 @@ const socketMiddleware = (store) => (next) => (action) => {
                 socket.on('receive_message', (data) => {
                     // console.log("receive_message: ", data)
                     store.dispatch(receiveMessageAsync(data));
+                })
+
+                socket.on('message_read', (data) => {
+                    const currentUserId = store.getState().auth.userData?._id;
+                    store.dispatch(messageReadReceiptReceived({ ...data, currentUserId }));
                 })
 
                 // socket.on("online_users", ({ onlineUsers }) => {

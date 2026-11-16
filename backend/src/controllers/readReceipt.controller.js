@@ -2,261 +2,215 @@ import mongoose from "mongoose";
 import { Message } from "../models/message.model.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import ApiResponse from "../utils/ApiResponse.js";
-import { ReadReceipt } from "../models/readReceipt.model.js";
-import { ConversationReadState } from "../models/ConversationReadState.model.js";
+import { ConversationReadState } from "../models/conversationReadState.model.js";
 import { DirectChat } from "../models/directChat.model.js";
+import { GroupMembership } from "../models/groupMembership.model.js";
+import ApiError from "../utils/ApiError.js";
+import { getIO, getOnlineUsers } from "../socket/index.js";
+import { isMessageCoveredByCursor } from "../utils/readState.js";
 
-
-
-const readReceiptAllMessages = asyncHandler(async (req, res) => {
-    const { chatId, chatType } = req.query;
+/**
+ * Advances the authenticated user's read cursor (ConversationReadState) for a direct or group chat.
+ * Rejects invalid chat/message mismatches and guarantees monotonic (forward-only) cursor progression.
+ */
+const markMessageAsRead = asyncHandler(async (req, res) => {
     const userId = req.user._id;
+    const {
+        chatType,
+        directChat,
+        groupId,
+        chatId,
+        lastReadMessageId,
+    } = req.body;
 
-    if (!chatId || !chatType || (chatType !== "direct" && chatType !== "group")) {
-        throw new ApiError(400, "ChatId and ChatType are required");
+    if (!chatType || (chatType !== "direct" && chatType !== "group")) {
+        throw new ApiError(400, "chatType must be 'direct' or 'group'");
     }
 
-    // [
-    //     {
-    //         $match: {
-    //             chatId: "6aa68f5786bac79417c9f6ba",
-    //             chatType: "direct",
-    //             senderId: {
-    //                 $ne: "6aa68f5686bac79417c9f5db"
-    //             }
-    //         }
-    //     },
-    //     {
-    //         $lookup: {
-    //             from: "readreceipts",
-    //             let: {
-    //                 msgId: "$_id"
-    //             },
-    //             pipeline: [
-    //                 {
-    //                     $match: {
-    //                         $expr: {
-    //                             $and: [
-    //                                 {
-    //                                     $eq: ["$messageId", "$$msgId"]
-    //                                 },
-    //                                 {
-    //                                     $eq: [
-    //                                         "$userId",
-    //                                         "6aa68f5686bac79417c9f5db"
-    //                                     ]
-    //                                 }
-    //                             ]
-    //                         }
-    //                     }
-    //                 }
-    //             ],
-    //             as: "readReceipts"
-    //         }
-    //     },
-    //     {
-    //         $match: {
-    //             readReceipts: {
-    //                 $size: 0
-    //             }
-    //         }
-    //     }
-    // ]
+    const resolvedDirectChatId = chatType === "direct" ? (directChat || chatId) : undefined;
+    const resolvedGroupId = chatType === "group" ? (groupId || chatId) : undefined;
 
-
-    const messageUnreadPipeline = [
-        {
-            $match: {
-                directChat: chatType === "direct" && new mongoose.Types.ObjectId(chatId),
-                groupId: chatType === "group" && new mongoose.Types.ObjectId(chatId),
-                chatType: chatType,
-                senderId: { $ne: new mongoose.Types.ObjectId(userId) },
-                isDeleted: false,
-            },
-        },
-        {
-            $lookup: {
-                from: "readreceipts",
-                let: { msgId: "$_id" },
-                pipeline: [
-                    {
-                        $match: {
-                            $expr: {
-                                $and: [
-                                    { $eq: ["$messageId", "$$msgId"] },
-                                    { $eq: ["$userId", new mongoose.Types.ObjectId(userId)] }
-                                ]
-                            }
-                        }
-                    }
-                ],
-                as: "readReceipts"
-            }
-        },
-        {
-            $match: {
-                readReceipts: {
-                    $size: 0,
-                },
-            },
-        },
-    ];
-
-    const messageUnread = await Message.aggregate(messageUnreadPipeline);
-
-    const readReceipts = messageUnread.map((message) => {
-        return {
-            messageId: message._id,
-            userId: userId,
-        };
-    });
-
-    const acknowledged = await ReadReceipt.insertMany(readReceipts);
-    console.log("acknowledged: ", acknowledged);
-
-    if (chatType === "direct") {
-        await DirectChat.findByIdAndUpdate(chatId, {
-            $set: { unreadCount: 0 }
-        });
+    if (chatType === "direct" && !mongoose.isValidObjectId(resolvedDirectChatId)) {
+        throw new ApiError(400, "Valid directChat ID is required");
     }
 
-    console.log("messageUnread: ", messageUnread);
+    if (chatType === "group" && !mongoose.isValidObjectId(resolvedGroupId)) {
+        throw new ApiError(400, "Valid groupId is required");
+    }
 
-    return res.status(200)
-        .json(new ApiResponse(
-            200,
-            { messageUnread: messageUnread, acknowledged: acknowledged },
-            "Messages Marked Read Successfully",
-        ));
-});
-
-const readReceiptMessageById = asyncHandler(async (req, res) => {
-    const { messageId, chatType } = req.body;
-    const userId = req.user._id;
-
-    if (!messageId || !chatType || (chatType !== "direct" && chatType !== "group")) {
-        throw new ApiError(400, "MessageId and ChatType are required");
+    if (!mongoose.isValidObjectId(lastReadMessageId)) {
+        throw new ApiError(400, "Invalid lastReadMessageId");
     }
 
     const message = await Message.findOne({
-        _id: new mongoose.Types.ObjectId(messageId),
-        chatType: chatType,
-        senderId: { $ne: new mongoose.Types.ObjectId(userId) },
-        isDeleted: false,
+        _id: lastReadMessageId,
+        isDeleted: { $ne: true },
     });
 
     if (!message) {
         throw new ApiError(404, "Message not found");
     }
 
-    const readReceipt = await ReadReceipt.create({
-        messageId: messageId,
-        userId: userId,
+    if (message.senderId.equals(userId)) {
+        throw new ApiError(400, "You cannot mark your own message as read");
+    }
+
+    if (message.chatType !== chatType) {
+        throw new ApiError(400, "Message chatType does not match");
+    }
+
+    let recipientIds = [];
+
+    if (chatType === "direct") {
+        if (!message.directChat || message.directChat.toString() !== resolvedDirectChatId.toString()) {
+            throw new ApiError(400, "Message does not belong to this direct chat");
+        }
+
+        const directChatDoc = await DirectChat.findOne({
+            _id: resolvedDirectChatId,
+            participants: userId,
+        })
+            .select("participants")
+            .lean();
+
+        if (!directChatDoc) {
+            throw new ApiError(403, "You are not a participant of this direct chat");
+        }
+
+        recipientIds = directChatDoc.participants
+            .map((id) => id.toString())
+            .filter((id) => id !== userId.toString());
+    } else {
+        if (!message.groupId || message.groupId.toString() !== resolvedGroupId.toString()) {
+            throw new ApiError(400, "Message does not belong to this group chat");
+        }
+
+        const membership = await GroupMembership.findOne({
+            groupId: resolvedGroupId,
+            userId,
+            isRemoved: false,
+        })
+            .select("_id")
+            .lean();
+
+        if (!membership) {
+            throw new ApiError(403, "You are not an active member of this group");
+        }
+
+        const activeMembers = await GroupMembership.find({
+            groupId: resolvedGroupId,
+            isRemoved: false,
+        })
+            .select("userId")
+            .lean();
+
+        recipientIds = activeMembers
+            .map((m) => m.userId?.toString())
+            .filter((id) => id && id !== userId.toString());
+    }
+
+    const filter = {
+        chatType,
+        userId,
+        ...(chatType === "direct"
+            ? { directChat: new mongoose.Types.ObjectId(resolvedDirectChatId) }
+            : { groupId: new mongoose.Types.ObjectId(resolvedGroupId) }),
+    };
+
+    const existing = await ConversationReadState.findOne(filter)
+        .populate("lastReadMessageId", "_id sentAt createdAt");
+
+    if (existing?.lastReadMessageId && isMessageCoveredByCursor(message, existing.lastReadMessageId)) {
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                {
+                    conversationReadState: existing,
+                    alreadyRead: true,
+                    updated: false,
+                },
+                "Already read this message"
+            )
+        );
+    }
+
+    const now = new Date();
+    const conversationReadState = await ConversationReadState.findOneAndUpdate(
+        filter,
+        {
+            $set: {
+                lastReadMessageId: message._id,
+                lastReadAt: now,
+            },
+        },
+        { upsert: true, new: true }
+    );
+
+    const remainingUnread = await Message.countDocuments({
+        ...(chatType === "direct"
+            ? { directChat: new mongoose.Types.ObjectId(resolvedDirectChatId) }
+            : { groupId: new mongoose.Types.ObjectId(resolvedGroupId) }),
+        chatType,
+        senderId: { $ne: userId },
+        isDeleted: false,
+        $or: [
+            { sentAt: { $gt: message.sentAt } },
+            {
+                sentAt: message.sentAt,
+                $or: [
+                    { createdAt: { $gt: message.createdAt } },
+                    { createdAt: message.createdAt, _id: { $gt: message._id } },
+                ],
+            },
+        ],
     });
 
-    return res.status(200)
-        .json(new ApiResponse(
-            200,
-            { readReceipt: readReceipt },
-            "Message Marked Read Successfully",
-        ));
-});
+    if (chatType === "direct") {
+        await DirectChat.findByIdAndUpdate(resolvedDirectChatId, {
+            $set: { unreadCount: remainingUnread },
+        });
+    } else {
+        await GroupMembership.findOneAndUpdate(
+            { groupId: resolvedGroupId, userId, isRemoved: false },
+            { $set: { unreadCount: remainingUnread } }
+        );
+    }
 
-
-
-
-const markMessageAsRead = asyncHandler(async (req, res) => {
     try {
-        const userId = req.user._id;
+        const io = getIO();
+        const onlineUsers = getOnlineUsers();
 
-        const {
+        const readReceiptPayload = {
             chatType,
-            directChat,
-            groupId,
-            lastReadMessageId,
-        } = req.body;
-
-        if (!chatType || (chatType !== "direct" && chatType !== "group")) {
-            throw new ApiError(400, "ChatType is required");
-        }
-
-        if (chatType === "direct") {
-            if (!directChat) {
-                throw new ApiError(400, "DirectChat is required");
-            }
-        } else if (chatType === "group") {
-            if (!groupId) {
-                throw new ApiError(400, "GroupId is required");
-            }
-        }
-
-        const message = await Message.findById(lastReadMessageId);
-
-        if (!message) {
-            throw new ApiError(404, "Message not found");
-        }
-
-        if (message.senderId.toString() === userId) {
-            throw new ApiError(400, "You cannot mark your own message as read");
-        }
-
-        if (
-            (
-                message.chatType !== 'direct' &&
-                message.directChat.toString() !== directChat
-            ) ||
-            (
-                message.chatType !== 'group' &&
-                message.groupId.toString() !== groupId
-            )
-        ) {
-            throw new ApiError(400, "Message does not belong to same chat");
-        }
-
-        const filter = {
-            chatType: chatType,
-            userId: userId,
+            chatId: (chatType === "direct" ? resolvedDirectChatId : resolvedGroupId).toString(),
+            userId: userId.toString(),
+            lastReadMessageId: message._id.toString(),
+            lastReadMessageSentAt: message.sentAt,
+            lastReadAt: conversationReadState.lastReadAt,
         };
 
-        if (chatType === "direct") {
-            filter.directChat = new mongoose.Types.ObjectId(directChat);
-        } else if (chatType === "group") {
-            filter.groupId = new mongoose.Types.ObjectId(groupId);
-        }
-
-        const existing = await ConversationReadState.findOne(filter);
-
-        if (
-            existing?.lastReadMessageId &&
-            existing.createdAt >= message.createdAt
-        ) {
-
-        }
-
-
-        const conversationReadState = await ConversationReadState.create({
-            chatType: chatType,
-            directChat: directChat,
-            groupId: groupId,
-            userId: userId,
-            lastReadMessageId: lastReadMessageId,
+        recipientIds.forEach((recipientId) => {
+            const recipientSocketId = onlineUsers[recipientId];
+            if (recipientSocketId) {
+                io.to(recipientSocketId).emit("message_read", readReceiptPayload);
+            }
         });
-
-        return res.status(200)
-            .json(new ApiResponse(
-                200,
-                { conversationReadState: conversationReadState },
-                "Message Marked Read Successfully",
-            ));
-
-    } catch (error) {
-        throw new ApiError(500, error.message);
+    } catch (socketError) {
+        console.error("Failed to emit message_read socket event:", socketError.message);
     }
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                conversationReadState,
+                alreadyRead: false,
+                updated: true,
+                unreadCount: remainingUnread,
+            },
+            "Message marked read successfully"
+        )
+    );
 });
 
-
-
-export {
-    readReceiptAllMessages,
-    readReceiptMessageById,
-}
+export { markMessageAsRead };

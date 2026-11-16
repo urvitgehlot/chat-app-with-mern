@@ -9,16 +9,20 @@ import Avatar from '../../../components/ui/Avatar';
 import IconButton from '../../../components/ui/IconButton';
 import { MessageSkeleton } from '../../../components/ui/Skeleton';
 import { useChat } from '../useChat';
+import { useMarkChatAsRead } from '../useMarkChatAsRead';
+import { useGoToBottom } from '../useGoToBottom';
 import { useAuth } from '../../auth/useAuth';
 import { createChatKey } from '../../../utils/chatKey';
+
+const resolveSenderId = (msg) =>
+    typeof msg?.senderId === 'object' ? msg.senderId?._id : msg?.senderId;
 
 function DirectMessage() {
     const { directChatId } = useParams();
     const navigate = useNavigate();
-    const { chats, messages, onlineUsers, joinChat, closeChat, getChatMessagesByPage } = useChat();
+    const { chats, messages, onlineUsers, joinChat, closeChat, getChatMessagesByPage, markMessageAsRead } = useChat();
     const { userData } = useAuth();
 
-    const [showGoToBottomBtn, setShowGoToBottomBtn] = useState(false);
     const [showManageContactModal, setShowManageContactModal] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -32,6 +36,12 @@ function DirectMessage() {
     const isLoading = chatMessagesState?.loading || false;
     const hasMore = chatMessagesState?.hasMore ?? true;
     const isInitialLoading = (isLoading || chats.loading) && (!chatMessagesState?.ids || chatMessagesState?.ids.length === 0);
+    const { showGoToBottomBtn, scrollToBottom } = useGoToBottom({
+        chatKey,
+        scrollContainerRef: chatRef,
+        bottomSentinelRef: chatBottomRef,
+        isInitialLoading,
+    });
 
     const currentChatUser = useMemo(() => {
         const participants = chats.entities[chatKey]?.participants;
@@ -104,10 +114,11 @@ function DirectMessage() {
         scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
         return () => scrollContainer.removeEventListener('scroll', handleScroll);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [directChatId, hasMore, chats.loading, chatMessagesState?.currentPage]);
+    }, [directChatId, hasMore, chats.loading, chatMessagesState?.currentPage, isInitialLoading]);
 
     // Top sentinel observer fallback
     useEffect(() => {
+        if (isInitialLoading) return;
         const topElement = chatTopRef.current;
         const scrollContainer = chatRef.current;
 
@@ -125,31 +136,26 @@ function DirectMessage() {
         observer.observe(topElement);
         return () => observer.disconnect();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [directChatId, hasMore, chatMessagesState?.currentPage, chats.loading]);
-
-    // Bottom sentinel observer for go-to-bottom button
-    useEffect(() => {
-        const bottomElement = chatBottomRef.current;
-        const scrollContainer = chatRef.current;
-
-        if (!bottomElement || !scrollContainer) return;
-
-        const observer = new IntersectionObserver(([entry]) => {
-            if (entry.isIntersecting) {
-                setShowGoToBottomBtn(false);
-            } else {
-                setShowGoToBottomBtn(true);
-            }
-        }, {
-            root: scrollContainer,
-            threshold: 0.1,
-        });
-
-        observer.observe(bottomElement);
-        return () => observer.disconnect();
-    }, [directChatId]);
+    }, [directChatId, hasMore, chatMessagesState?.currentPage, chats.loading, isInitialLoading]);
 
     const messageIds = chatMessagesState?.ids || [];
+
+    useMarkChatAsRead({
+        chatType: 'direct',
+        chatId: directChatId,
+        messageIds,
+        messageEntities: messages.entities,
+        currentUserId: userData?._id,
+        existingChat: chats.entities?.[chatKey],
+        markMessageAsRead,
+    });
+
+    useEffect(() => {
+        return () => {
+            closeChat();
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
         <div className="flex-1 flex min-w-0 h-full relative overflow-hidden bg-bg-app">
@@ -220,17 +226,14 @@ function DirectMessage() {
                         ref={chatRef}
                         className="flex-1 overflow-y-auto p-3 sm:p-5 flex flex-col-reverse scrollbar-hide relative select-text"
                     >
-                        <div ref={chatBottomRef}>
+                        <div ref={chatBottomRef} className="h-px w-full shrink-0" aria-hidden="true">
                             {/* Bottom Sentinel */}
                         </div>
 
                         {/* Scroll to Bottom Button */}
                         {showGoToBottomBtn && (
                             <button
-                                onClick={() => {
-                                    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
-                                    setShowGoToBottomBtn(false);
-                                }}
+                                onClick={scrollToBottom}
                                 title="Jump to recent"
                                 className="sticky ml-auto bottom-3 right-3 size-9 rounded-full bg-bg-elevated hover:bg-bg-hover text-text-primary border border-border shadow-lg flex items-center justify-center cursor-pointer transition-all hover:scale-105 active:scale-95 z-20"
                             >
@@ -243,7 +246,8 @@ function DirectMessage() {
                             const message = messages.entities[messageId];
                             if (!message) return null;
 
-                            const isReceived = message.senderId !== userData?._id;
+                            const senderIdStr = resolveSenderId(message);
+                            const isReceived = senderIdStr !== userData?._id;
                             const sentAt = new Date(`${message.sentAt || message.createdAt || Date.now()}`);
 
                             // Grouping calculation in flex-col-reverse:
@@ -252,8 +256,8 @@ function DirectMessage() {
                             const prevMessage = messages.entities[messageIds[index + 1]];
                             const nextMessage = messages.entities[messageIds[index - 1]];
 
-                            const isFirstInGroup = !prevMessage || prevMessage.senderId !== message.senderId;
-                            const isLastInGroup = !nextMessage || nextMessage.senderId !== message.senderId;
+                            const isFirstInGroup = !prevMessage || resolveSenderId(prevMessage) !== senderIdStr;
+                            const isLastInGroup = !nextMessage || resolveSenderId(nextMessage) !== senderIdStr;
 
                             return (
                                 <ChatBubble

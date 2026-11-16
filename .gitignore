@@ -43,3 +43,8 @@ postman_collection.json
 
 # Enviornments
 .env
+
+
+# testing
+/load-testing
+/backend/migrations

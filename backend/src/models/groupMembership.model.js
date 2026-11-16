@@ -16,6 +16,10 @@ const groupMembershipSchema = new Schema(
             ref: "User",
             required: true,
         },
+        unreadCount: {
+            type: Number,
+            default: 0,
+        },
         joinedAt: {
             type: Date,
             default: Date.now,
@@ -48,7 +52,9 @@ groupMembershipSchema.index({
 }, { unique: true });
 
 groupMembershipSchema.index({
-    userId: 1
+    userId: 1,
+    isRemoved: 1,
+    updatedAt: -1
 });
 
 export const GroupMembership = mongoose.model("GroupMembership", groupMembershipSchema)

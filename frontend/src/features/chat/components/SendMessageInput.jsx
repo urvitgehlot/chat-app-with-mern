@@ -12,7 +12,7 @@ const formatFileSize = (bytes) => {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 };
 
-function SendMessageInput({ inputType = "direct", chatId, currentChatUser }) {
+function SendMessageInput({ inputType = "direct", chatId, currentChatUser, onCustomSend }) {
     const [message, setMessage] = useState("");
     const [attachments, setAttachments] = useState([]);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -92,6 +92,25 @@ function SendMessageInput({ inputType = "direct", chatId, currentChatUser }) {
             ? `[File: ${attachments[0].name}]` 
             : `[${attachments.length} Attachments]`);
 
+        if (onCustomSend) {
+            onCustomSend({
+                message: {
+                    tempId: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+                    content: contentToSend,
+                    chatType: inputType,
+                    chatId: chatId,
+                    senderId: userData?._id,
+                    sentAt: Date.now(),
+                }
+            });
+            setMessage("");
+            setAttachments([]);
+            if (textareaRef.current) {
+                textareaRef.current.style.height = "auto";
+            }
+            return;
+        }
+
         const validatedMessage = validateAndCreateMessage({
             tempId: crypto.randomUUID(),
             content: contentToSend,
@@ -99,7 +118,7 @@ function SendMessageInput({ inputType = "direct", chatId, currentChatUser }) {
             chatId: chatId,
             senderId: userData?._id,
             sendByMe: true,
-            sentTo: currentChatUser,
+            sentTo: inputType === 'direct' ? currentChatUser : { _id: chatId },
             sentAt: Date.now(),
         });
 

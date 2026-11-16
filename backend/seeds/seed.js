@@ -1,10 +1,9 @@
-import connectDB from "../src/db/index.js"
+import connectDB from "../src/db/index.js";
 import mongoose from "mongoose";
 import { generateUsers } from "./users.seed.js";
 import { generateDirectChats, updateDirectChatsLastMessage } from "./directChat.seed.js";
 import { generateMessages } from "./message.seed.js";
-import { generateGroupMemberShip, generateGroups } from "./groups.seed.js";
-
+import { generateGroupMemberships, generateGroups, updateGroupsLastMessage } from "./groups.seed.js";
 
 const runSeed = async () => {
     try {
@@ -13,49 +12,51 @@ const runSeed = async () => {
         console.log("Deleting Old Data...");
         await mongoose.connection.db.dropDatabase();
 
-        // Sync/build fresh indexes:
+        console.log("Syncing Indexes...");
         await mongoose.syncIndexes();
 
-        console.log("Seeding users...");
-        // const users = await generateUsers(10);
-        const users = await generateUsers(20);
+        const startTime = Date.now();
+
+        // High scale targets
+        const USER_COUNT = 100000;          // 100,000 users
+        const DIRECT_CHAT_COUNT = 1000000;   // 1,000,000 chats
+        const GROUP_COUNT = 2000;            // 2,000 groups
+        const MESSAGE_COUNT = 10000000;      // 10,000,000 messages
+
+        console.log(`\n--- Seeding ${USER_COUNT.toLocaleString()} Users ---`);
+        await generateUsers(USER_COUNT);
         console.log("Users seeded successfully!");
 
-        console.log("Seeding Direct Chats...");
-        // const directChats = await generateDirectChats(users, 20);
-        const directChats = await generateDirectChats(users, 200);
+        console.log(`\n--- Seeding ${DIRECT_CHAT_COUNT.toLocaleString()} Direct Chats ---`);
+        await generateDirectChats(DIRECT_CHAT_COUNT);
         console.log("Direct Chats seeded successfully!");
 
-        console.log("Seeding Messages...");
-        // const messages = await generateMessages(directChats, 1000);
-        const messages = await generateMessages(directChats, 10000000);
+        console.log(`\n--- Seeding ${GROUP_COUNT} Groups & Memberships ---`);
+        await generateGroups(GROUP_COUNT);
+        await generateGroupMemberships();
+        console.log("Groups and Memberships seeded successfully!");
+
+        console.log(`\n--- Seeding ${MESSAGE_COUNT.toLocaleString()} Messages ---`);
+        await generateMessages(MESSAGE_COUNT);
         console.log("Messages seeded successfully!");
 
-        console.log("Updating Direct Chats with lastMessageId and unreadCount...");
-        await updateDirectChatsLastMessage(directChats);
+        console.log("\n--- Updating Direct Chats with lastMessageId and unreadCount ---");
+        await updateDirectChatsLastMessage();
         console.log("Direct Chats updated successfully!");
 
-        console.log("Seeding Groups...");
-        // const groups = await generateGroups(users, 5);
-        const groups = await generateGroups(users, 10);
-        console.log("Groups seeded successfully!");
+        console.log("\n--- Updating Groups with lastMessageId ---");
+        await updateGroupsLastMessage();
+        console.log("Groups updated successfully!");
 
-        console.log("Seeding Group Memberships...");
-        for (const group of groups) {
-            // const randomUsersCount = Math.floor(Math.random() * 2) + 1;
-            const randomUsersCount = Math.floor(Math.random() * 5) + 1;
-            console.log("randomUsersCount: ", randomUsersCount);
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        console.log(`\nSeeding completed successfully in ${elapsed}s!`);
 
-            await generateGroupMemberShip(users, group._id, randomUsersCount);
-        }
-        console.log("Group Memberships seeded successfully!");
-
-        process.exit();
+        process.exit(0);
 
     } catch (error) {
-        console.log("Error seeding database:", error);
+        console.error("Error seeding database:", error);
         process.exit(1);
     }
-}
+};
 
 runSeed();

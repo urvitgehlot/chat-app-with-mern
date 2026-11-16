@@ -32,6 +32,13 @@ const directchatSchema = new Schema(
             type: Number,
             default: 0,
         },
+        isBlocked: {
+            type: [Schema.Types.ObjectId],
+            ref: "User",
+            default: [],
+            // chat will be deleted if blocked by both
+            validate: (val) => val.length <= 1,
+        },
         // typingUsers: [
         //     {
         //         type: Schema.Types.ObjectId,
@@ -52,15 +59,13 @@ directchatSchema.pre("save", function () {
     // console.log("sorted: ", sorted);
 
     this.participants = sorted.map(id => new mongoose.Types.ObjectId(id));
-    console.log("participants: ", this.participants);
-
     // create unique key
     this.participantsKey = sorted.join("_");
     // console.log("participantsKey: ", this.participantsKey);
 
 });
 
-directchatSchema.index({ participants: 1 });
+directchatSchema.index({ participants: 1, updatedAt: -1 });
 directchatSchema.index({ participantsKey: 1 }, { unique: true });
 
 

@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 
-const ConversationReadStateSchema = new mongoose.Schema(
+const conversationReadStateSchema = new mongoose.Schema(
     {
         chatType: {
             type: String,
@@ -62,4 +62,4 @@ conversationReadStateSchema.index(
     }
 );
 
-export const ConversationReadState = mongoose.model("ConversationReadState", ConversationReadStateSchema);
+export const ConversationReadState = mongoose.model("ConversationReadState", conversationReadStateSchema);

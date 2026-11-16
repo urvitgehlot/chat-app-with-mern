@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function Avatar({
     src,
@@ -10,6 +10,10 @@ export default function Avatar({
     onClick
 }) {
     const [imageError, setImageError] = useState(false);
+
+    useEffect(() => {
+        setImageError(false);
+    }, [src]);
 
     const sizeClasses = {
         xs: "size-6 text-[10px]",

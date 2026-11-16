@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
+import { validate } from "../middlewares/validate.middleware.js";
+import { sendMessageValidator, getChatMessagesByPageValidator, getUserAllMessagesValidator } from "../validators/message.validators.js";
 import { getUserAllMessages, getChatMessagesByPage, sendMessage } from "../controllers/message.controllers.js";
 
 /**
@@ -154,7 +156,7 @@ const router = Router()
  *       500:
  *         description: Internal server error
  */
-router.route('/send-message').post(verifyJWT, upload.array('attachments', 10), sendMessage)
+router.route('/send-message').post(verifyJWT, upload.array('attachments', 10), validate(sendMessageValidator), sendMessage)
 
 /**
  * @swagger
@@ -186,8 +188,8 @@ router.route('/send-message').post(verifyJWT, upload.array('attachments', 10), s
  *       500:
  *         description: Internal server error
  */
-router.route('/get-user-all-message').get(verifyJWT, getUserAllMessages)
+router.route('/get-user-all-message').get(verifyJWT, validate(getUserAllMessagesValidator), getUserAllMessages)
 
-router.route("/get-messsages-by-pages").get(verifyJWT, getChatMessagesByPage);
+router.route("/get-messsages-by-pages").get(verifyJWT, validate(getChatMessagesByPageValidator), getChatMessagesByPage);
 
 export default router

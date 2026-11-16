@@ -7,7 +7,8 @@ import { Message } from "../models/message.model.js";
 import { Attachment } from "../models/attachment.model.js";
 import { GroupMembership } from "../models/groupMembership.model.js";
 import ApiResponse from "../utils/ApiResponse.js";
-import { ReadReceipt } from "../models/readReceipt.model.js";
+import { ConversationReadState } from "../models/conversationReadState.model.js";
+import { getMessageReadStatus } from "../utils/readState.js";
 import { Group } from "../models/group.model.js";
 import { getIO, getOnlineUsers } from "../socket/index.js";
 
@@ -23,7 +24,7 @@ const sendMessage = asyncHandler(async (req, res) => {
 
     // check if replyToMessageId then it should point to Messsage Object itself with id replytoMessageId
 
-    const { content, chatType, chatId, replyToMessageId, sentTo, senderId } = req.body;
+    const { content, chatType, chatId, replyToMessageId, sentTo } = req.body;
     const attachmentsLocalPath = [];
     const attachments = [];
 
@@ -31,11 +32,13 @@ const sendMessage = asyncHandler(async (req, res) => {
         content,
         chatType,
         chatId,
-        senderId,
         sentTo
     ].some((field) => !field?.trim())) {
+        console.log("Field: ", [content, chatType, chatId, sentTo]);
         throw new ApiError(400, "All fields are required")
     }
+
+    const senderId = req.user._id;
 
     const trimmedChatType = chatType.trim().toLowerCase()
 
@@ -48,7 +51,7 @@ const sendMessage = asyncHandler(async (req, res) => {
     }
 
     if (trimmedChatType === "group") {
-        const groupMembership = await GroupMembership.findOne({ groupId: chatId, userId });
+        const groupMembership = await GroupMembership.findOne({ groupId: chatId, userId: req.user._id, isRemoved: false });
         if (!groupMembership) {
             throw new ApiError(400, "You are not a member of this group");
         }
@@ -197,6 +200,28 @@ const sendMessage = asyncHandler(async (req, res) => {
 
                 await message.populate("senderId", "_id displayName username avatarUrl lastActiveAt");
 
+                await Group.findByIdAndUpdate(chatId, {
+                    $set: { lastMessageId: message._id }
+                });
+
+                await GroupMembership.updateMany(
+                    { groupId: chatId, userId: { $ne: req.user._id }, isRemoved: false },
+                    { $inc: { unreadCount: 1 } }
+                );
+
+                const activeMembers = await GroupMembership.find({ groupId: chatId, isRemoved: false }).select("userId");
+                activeMembers.forEach(member => {
+                    const memberIdStr = member.userId?.toString();
+                    if (memberIdStr && memberIdStr !== req.user._id.toString() && onlineUsers[memberIdStr]) {
+                        io.to(onlineUsers[memberIdStr]).emit('receive_message', {
+                            message,
+                            group,
+                            chat: group,
+                            attachments
+                        });
+                    }
+                });
+
                 return res.status(200).json(new ApiResponse(
                     200,
                     {
@@ -245,22 +270,23 @@ const getChatMessagesByPage = asyncHandler(async (req, res) => {
     if (!chatId || !chatType || (chatType !== "direct" && chatType !== "group")) {
         throw new ApiError(400, "Chat Id and Chat Type are required");
     }
-    var directChat;
+    var directChat = null;
+    var group = null;
 
     if (chatType === "direct") {
         directChat = await DirectChat.findById(chatId)
             .populate("participants", "_id displayName username avatarUrl lastActiveAt");
+    } else {
+        group = await Group.findById(chatId);
     }
-    else {
 
-    }
+    const matchQuery = chatType === "direct"
+        ? { directChat: new mongoose.Types.ObjectId(chatId), chatType: "direct" }
+        : { groupId: new mongoose.Types.ObjectId(chatId), chatType: "group" };
 
     const pipeline = [
         {
-            $match: {
-                directChat: new mongoose.Types.ObjectId(chatId),
-                chatType: "direct",
-            }
+            $match: matchQuery
         },
         {
             $sort: {
@@ -276,6 +302,31 @@ const getChatMessagesByPage = asyncHandler(async (req, res) => {
                     {
                         $limit: parseInt(limit),
                     },
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "senderId",
+                            foreignField: "_id",
+                            as: "sender",
+                            pipeline: [
+                                {
+                                    $project: {
+                                        _id: 1,
+                                        displayName: 1,
+                                        username: 1,
+                                        avatarUrl: 1,
+                                        lastActiveAt: 1
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        $unwind: {
+                            path: "$sender",
+                            preserveNullAndEmptyArrays: true
+                        }
+                    }
                 ],
                 totalCount: [
                     {
@@ -286,51 +337,59 @@ const getChatMessagesByPage = asyncHandler(async (req, res) => {
         }
     ];
 
-    const messages = await Message.aggregate(pipeline);
+    const readStateFilter = chatType === "direct"
+        ? { chatType: "direct", directChat: new mongoose.Types.ObjectId(chatId) }
+        : { chatType: "group", groupId: new mongoose.Types.ObjectId(chatId) };
 
-    // testing fast way to load messages
-    // const messages = await Message.find({
-    //     $or: [
-    //         { directChat: chatId },
-    //         { groupId: chatId }
-    //     ],
-    //     chatType,
-    // })
-    //     .sort({ sentAt: -1 })
-    //     .skip((page - 1) * limit)
-    //     .limit(Number(limit))
-    //     .populate("senderId", "_id displayName username avatarUrl lastActiveAt")
-    //     .lean();
+    const [messages, readStates] = await Promise.all([
+        Message.aggregate(pipeline),
+        ConversationReadState.find(readStateFilter)
+            .populate("lastReadMessageId", "_id sentAt createdAt")
+            .lean(),
+    ]);
 
-    // const [messages, totalCount] = await Promise.all([
-    //     Message.find({ directChat: chatId, chatType: "direct" })
-    //         .sort({ sentAt: -1 })
-    //         .skip((page - 1) * limit)
-    //         .limit(Number(limit))
-    //         .lean(),
-    //     Message.countDocuments({ directChat: chatId, chatType: "direct" })
-    // ]);
+    const currentUserIdStr = req.user._id.toString();
+    let myReadCursor = null;
+    const otherReadCursors = [];
 
+    for (const rs of readStates) {
+        if (!rs.lastReadMessageId) continue;
+        if (rs.userId.toString() === currentUserIdStr) {
+            myReadCursor = rs.lastReadMessageId;
+        } else {
+            otherReadCursors.push({
+                userId: rs.userId,
+                ...rs.lastReadMessageId,
+            });
+        }
+    }
 
-    // const readReceipts = messages[0]['messages'].filter((message) => message.senderId.toString() !== req.user._id.toString()).map((message) => {
-    //     return {
-    //         messageId: message._id,
-    //         userId: req.user._id,
-    //     }
-    // })
+    const messagesWithReadStatus = messages[0]["messages"].map((msg) => ({
+        ...msg,
+        isRead: getMessageReadStatus({
+            message: msg,
+            currentUserId: req.user._id,
+            myReadCursor,
+            otherReadCursors,
+        }),
+    }));
 
-    // const acknowledged = await ReadReceipt.insertMany(readReceipts);
-    // console.log("acknowledged: ", acknowledged);
-
-
-    // const total = 1000;
     const total = messages[0].totalCount[0]?.count || 0;
     const totalPages = Math.ceil(total / limit);
 
     return res.status(200).json(
         new ApiResponse(
             200,
-            { messages: messages[0]['messages'], directChat: directChat, total: total, totalPages: totalPages },
+            {
+                messages: messagesWithReadStatus,
+                directChat: directChat,
+                group: group,
+                total: total,
+                totalPages: totalPages,
+                myLastReadMessageId: myReadCursor?._id || null,
+                myLastReadSentAt: myReadCursor?.sentAt || null,
+                otherReadStates: otherReadCursors,
+            },
             "Messages fetched successfully"
         )
     );

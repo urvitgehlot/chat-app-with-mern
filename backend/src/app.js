@@ -37,7 +37,7 @@ app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpecs))
  *       200:
  *         description: Server is online and responding.
  *         content:
- *           application/json:
+*           application/json:
  *             schema:
  *               type: object
  *               properties:
@@ -54,6 +54,7 @@ import userRouter from "./routes/user.routes.js"
 import directChatRouter from "./routes/directChat.routes.js"
 import groupRouter from './routes/group.routes.js'
 import messageRouter from "./routes/message.routes.js"
+import readReceiptRouter from "./routes/readReceipt.routes.js"
 
 import { authLimiter, limiter } from "./middlewares/ratelimit.middleware.js"
 
@@ -63,6 +64,7 @@ app.use('/api/v1/users', userRouter)
 app.use('/api/v1/direct-chat', directChatRouter)
 app.use('/api/v1/group', groupRouter)
 app.use("/api/v1/message", messageRouter)
+app.use("/api/v1/read-receipt", readReceiptRouter)
 
 
 

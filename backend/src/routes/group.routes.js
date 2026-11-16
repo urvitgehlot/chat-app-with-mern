@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
-import { createGroup, getUserAllGroups } from "../controllers/group.controllers.js";
+import { upload } from "../middlewares/multer.middleware.js";
+import { validate } from "../middlewares/validate.middleware.js";
+import { createGroupValidator, getGroupValidator, addUserToGroupValidator, updateGroupValidator } from "../validators/group.validators.js";
+import { createGroup, addUserToGroup, getGroup, getUserAllGroups, updateGroupDetails } from "../controllers/group.controllers.js";
 
 /**
  * @swagger
@@ -121,7 +124,11 @@ const router = Router();
  *       500:
  *         description: Failed to create group or server error
  */
-router.route('/create-group').post(verifyJWT, createGroup)
+router.route('/create-group').post(verifyJWT, validate(createGroupValidator), createGroup)
+router.route('/add-user').post(verifyJWT, validate(addUserToGroupValidator), addUserToGroup)
+router.route('/:groupId')
+    .get(verifyJWT, validate(getGroupValidator), getGroup)
+    .patch(verifyJWT, upload.single('avatar'), validate(updateGroupValidator), updateGroupDetails);
 
 /**
  * @swagger

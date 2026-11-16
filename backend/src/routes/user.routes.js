@@ -1,7 +1,15 @@
 import { Router } from "express";
-import { completeProfileSetup, getCurrentUser, loginUser, logoutUser, refreshAccessToken, registerUser, searchUsers, sendRegistrationOTP, updateAboutMe, updateAvatar, updateDisplayName } from "../controllers/user.controllers.js";
+import { completeProfileSetup, getCurrentUser, getRecentChats, loginUser, logoutUser, refreshAccessToken, registerUser, searchUsers, sendRegistrationOTP, updateAboutMe, updateAvatar, updateDisplayName } from "../controllers/user.controllers.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
+import { validate } from "../middlewares/validate.middleware.js";
+import {
+    sendOtpValidator,
+    registerUserValidator,
+    loginUserValidator,
+    completeProfileValidator,
+    searchUsersValidator,
+} from "../validators/user.validators.js";
 import { createTokenBucketLimiter } from "../middlewares/tokenBucket.middleware.js";
 
 /**
@@ -155,8 +163,9 @@ const router = Router()
  *         description: Internal server error
  */
 router.route('/send-registration-otp').post(
-    sendOtpLimiter,
-    sendOtpAttemptLimiter,
+    // sendOtpLimiter,
+    // sendOtpAttemptLimiter,
+    validate(sendOtpValidator),
     sendRegistrationOTP
 )
 
@@ -203,7 +212,11 @@ router.route('/send-registration-otp').post(
  *       500:
  *         description: Internal server error
  */
-router.route('/login').post(loginAttemptLimiter, loginUser)
+router.route('/login').post(
+    // loginAttemptLimiter,
+    validate(loginUserValidator),
+    loginUser
+)
 
 /**
  * @swagger
@@ -251,14 +264,15 @@ router.route('/login').post(loginAttemptLimiter, loginUser)
  */
 router.route('/register').post(
     // registerBucket,
-    registerAttemptLimiter,
+    // registerAttemptLimiter,
+    validate(registerUserValidator),
     registerUser
 )
-
 
 router.route('/complete-profile-setup').post(
     verifyJWT,
     upload.single("avatar"),
+    validate(completeProfileValidator),
     completeProfileSetup
 )
 
@@ -488,6 +502,11 @@ router.route('/update-displayname').patch(verifyJWT, updateDisplayName)
  *       500:
  *         description: Internal server error
  */
-router.route('/find-users').get(verifyJWT, searchUsers);
+router.route('/find-users').get(verifyJWT, validate(searchUsersValidator), searchUsers);
 
+
+
+
+
+router.route("/get-recent-chats").get(verifyJWT, getRecentChats);
 export default router;

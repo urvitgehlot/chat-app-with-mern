@@ -6,6 +6,7 @@ import PageNotFound from '../pages/PageNotFound';
 import HomeLayout from '../components/layouts/HomeLayout';
 import { AuthPage } from '../features/auth';
 import DirectMessage from '../features/chat/pages/DirectMessage';
+import GroupChat from '../features/chat/pages/GroupChat';
 
 const router = createBrowserRouter([
     {
@@ -43,6 +44,22 @@ const router = createBrowserRouter([
                 path: ":directChatId",
                 element: (
                     <DirectMessage />
+                ),
+            },
+        ]
+    },
+    {
+        path: "/group-chat",
+        element: (
+            <AuthLayout authentication={true}>
+                <HomeLayout />
+            </AuthLayout>
+        ),
+        children: [
+            {
+                path: ":id",
+                element: (
+                    <GroupChat />
                 ),
             },
         ]

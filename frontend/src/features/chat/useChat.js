@@ -2,8 +2,13 @@ import { useDispatch, useSelector } from "react-redux";
 import {
     getRecentChatsAsync,
     createDirectChatAsync,
+    createGroupAsync,
+    addUserToGroupAsync,
+    getGroupAsync,
+    updateGroupAsync,
     getUserDirectChatMessagesAsync,
     getChatMessagesByPageAsync,
+    markMessageAsReadAsync,
     joinChat as joinChatAction,
     markChatAsRead as markChatAsAction,
     closeChat as closeChatAction,
@@ -37,6 +42,11 @@ export const useChat = () => {
         dispatch(markChatAsAction({ chatId, chatType }));
     }
 
+    const markMessageAsRead = async ({ chatType, chatId, lastReadMessageId }) => {
+        if (!chatType || !chatId || !lastReadMessageId) return null;
+        return dispatch(markMessageAsReadAsync({ chatType, chatId, lastReadMessageId })).unwrap();
+    }
+
     const closeChat = () => {
         dispatch(closeChatAction());
     }
@@ -47,6 +57,26 @@ export const useChat = () => {
 
     const createDirectChat = async (userId) => {
         const result = await dispatch(createDirectChatAsync({ userId })).unwrap();
+        return result;
+    }
+
+    const createGroup = async (groupData) => {
+        const result = await dispatch(createGroupAsync(groupData)).unwrap();
+        return result;
+    }
+
+    const addUserToGroup = async ({ groupId, userId }) => {
+        const result = await dispatch(addUserToGroupAsync({ groupId, userId })).unwrap();
+        return result;
+    }
+
+    const getGroupDetails = async (groupId) => {
+        const result = await dispatch(getGroupAsync(groupId)).unwrap();
+        return result;
+    }
+
+    const updateGroup = async ({ groupId, formData }) => {
+        const result = await dispatch(updateGroupAsync({ groupId, formData })).unwrap();
         return result;
     }
 
@@ -63,10 +93,15 @@ export const useChat = () => {
         activeChatKey,
         getRecentChats,
         createDirectChat,
+        createGroup,
+        addUserToGroup,
+        getGroupDetails,
+        updateGroup,
         getUserDirectChatMessages,
         getChatMessagesByPage,
         joinChat,
         markChatAsRead,
+        markMessageAsRead,
         closeChat,
         sendMessage,
     }

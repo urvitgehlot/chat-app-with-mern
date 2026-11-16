@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Check, CheckCheck } from 'lucide-react';
+import { Check, CheckCheck, Users } from 'lucide-react';
 import { formatedSmartDate } from '../../../utils/date';
 import { useAuth } from '../../auth/useAuth';
 import { useChat } from '../useChat';
@@ -12,12 +12,14 @@ function RecentMessageComponent({ chat }) {
     const { userData } = useAuth();
     const params = useParams();
 
-    const { chatId, chatType, lastMessageId, unreadCount } = chat;
+    const { chatId, chatType, lastMessageId, unreadCount, name } = chat;
     const lastMessage = messages.entities[lastMessageId];
 
     // Current chat active check
-    const currentParamId = params.directChatId || params.directMsgId;
+    const currentParamId = params.directChatId || params.directMsgId || params.id;
     const isSelected = activeChatKey === createChatKey(chatType, chatId) || currentParamId === chatId;
+
+    const isGroup = chatType === "group";
 
     const chatUser = useMemo(() => {
         if (chatType === "direct") {
@@ -35,16 +37,23 @@ function RecentMessageComponent({ chat }) {
         }
     }, [lastMessage?.sentAt]);
 
+    const lastMsgSenderId =
+        typeof lastMessage?.senderId === 'object'
+            ? lastMessage.senderId?._id
+            : lastMessage?.senderId;
     const isSentByMe = Boolean(
-        lastMessage && (lastMessage.senderId === userData?._id || lastMessage.sendByMe)
+        lastMessage && (lastMsgSenderId === userData?._id || lastMessage.sendByMe)
     );
 
     // Online presence check
     const isUserOnline = chatUser?._id && Boolean(onlineUsers?.[chatUser._id]);
 
+    const chatLink = isGroup ? `/group-chat/${chatId}` : `/direct-chat/${chatId}`;
+    const displayName = isGroup ? (name || "Group Chat") : (chatUser?.displayName || "Unknown User");
+
     return (
         <Link 
-            to={`/direct-chat/${chatId}`}
+            to={chatLink}
             className="block no-underline outline-none focus-visible:bg-bg-hover"
         >
             <div
@@ -60,18 +69,32 @@ function RecentMessageComponent({ chat }) {
                 )}
 
                 {/* Avatar with Status */}
-                <Avatar
-                    src={chatUser?.avatarUrl}
-                    name={chatUser?.displayName || "User"}
-                    size="md"
-                    status={isUserOnline ? "online" : null}
-                />
+                {isGroup ? (
+                    chat.avatarUrl ? (
+                        <Avatar
+                            src={chat.avatarUrl}
+                            name={displayName}
+                            size="md"
+                        />
+                    ) : (
+                        <div className="size-10 rounded-xl bg-gradient-to-tr from-primary/20 to-indigo-500/20 border border-primary/30 flex items-center justify-center text-primary shrink-0">
+                            <Users size={18} />
+                        </div>
+                    )
+                ) : (
+                    <Avatar
+                        src={chatUser?.avatarUrl}
+                        name={chatUser?.displayName || "User"}
+                        size="md"
+                        status={isUserOnline ? "online" : null}
+                    />
+                )}
 
                 {/* Content Area */}
                 <div className="flex flex-col flex-1 min-w-0">
                     <div className="flex justify-between items-baseline mb-0.5">
                         <span className={`text-sm font-semibold truncate ${isSelected ? 'text-text-primary' : 'text-slate-200'}`}>
-                            {chatUser?.displayName || "Unknown User"}
+                            {displayName}
                         </span>
                         {formattedDate && (
                             <span className="text-[11px] font-medium text-text-muted shrink-0 ml-2 tracking-tight">

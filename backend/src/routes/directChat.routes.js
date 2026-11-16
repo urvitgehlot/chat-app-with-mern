@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
-import { createDirectChat, getRecentChats, getUserDirectChats } from "../controllers/directChat.controllers.js";
+import { validate } from "../middlewares/validate.middleware.js";
+import { createDirectChatValidator } from "../validators/directChat.validators.js";
+import { createDirectChat, getUserDirectChats } from "../controllers/directChat.controllers.js";
 
 /**
  * @swagger
@@ -101,7 +103,7 @@ const router = Router();
  *       500:
  *         description: Internal server error
  */
-router.route("/create-direct-chat").post(verifyJWT, createDirectChat);
+router.route("/create-direct-chat").post(verifyJWT, validate(createDirectChatValidator), createDirectChat);
 
 /**
  * @swagger
@@ -124,6 +126,6 @@ router.route("/create-direct-chat").post(verifyJWT, createDirectChat);
  *       500:
  *         description: Internal server error
  */
-router.route("/get-recent-chats").get(verifyJWT, getRecentChats);
+// router.route("/get-recent-chats").get(verifyJWT, getRecentChats);
 
 export default router;
