@@ -11,6 +11,7 @@ import { ConversationReadState } from "../models/conversationReadState.model.js"
 import { getMessageReadStatus } from "../utils/readState.js";
 import { Group } from "../models/group.model.js";
 import { getIO, getOnlineUsers } from "../socket/index.js";
+import { redisClient } from "../../config/redis.js";
 
 const sendMessage = asyncHandler(async (req, res) => {
     // get content, chatType, sentToId, replyToMessageId
