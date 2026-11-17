@@ -14,6 +14,7 @@ import { GroupMembership } from "../models/groupMembership.model.js";
 import { ConversationReadState } from "../models/conversationReadState.model.js";
 import { getMessageReadStatus, isMessageCoveredByCursor } from "../utils/readState.js";
 import mongoose from "mongoose";
+import { redisClient } from "../../config/redis.js";
 
 const generateAccessAndRefreshToken = async (userId) => {
     try {
@@ -492,156 +493,195 @@ const searchUsers = asyncHandler(async (req, res) => {
 
 
 const getRecentChats = asyncHandler(async (req, res) => {
+    try {
 
-    const [directChats, groupChats] = await Promise.all([
-        DirectChat.find({
-            participants: req.user._id,
-        })
-            .sort({ updatedAt: -1 })
-            .populate('participants', "_id displayName username avatarUrl lastActiveAt")
-            .populate({
-                path: 'lastMessageId',
-                select: "_id content senderId directChat chatType isDeleted sentAt createdAt",
-                populate: {
-                    path: 'senderId',
-                    select: '_id displayName username avatarUrl',
-                },
+        const cachedKey = `user:${req.user._id}:recent-chats`;
+
+        // Only read cache if Redis is connected
+        if (redisClient.isOpen) {
+            const cachedChats = await redisClient.get(cachedKey);
+
+            if (cachedChats) {
+                return res.status(200)
+                    .json(
+                        new ApiResponse(
+                            200,
+                            JSON.parse(cachedChats),
+                            "Recent chats fetched successfully",
+                            'redis'
+                        ),
+                    );
+            }
+        }
+
+        const [directChats, groupChats] = await Promise.all([
+            DirectChat.find({
+                participants: req.user._id,
             })
-            .lean(),
-
-        GroupMembership.find({
-            userId: req.user._id,
-            isRemoved: false,
-        })
-            .sort({ updatedAt: -1 })
-            .populate({
-                path: 'groupId',
-                select: "_id name description avatarUrl lastMessageId updatedAt",
-                populate: {
+                .sort({ updatedAt: -1 })
+                .populate('participants', "_id displayName username avatarUrl lastActiveAt")
+                .populate({
                     path: 'lastMessageId',
-                    select: "_id content senderId groupId chatType isDeleted sentAt createdAt",
+                    select: "_id content senderId directChat chatType isDeleted sentAt createdAt",
                     populate: {
                         path: 'senderId',
                         select: '_id displayName username avatarUrl',
                     },
-                }
+                })
+                .lean(),
+
+            GroupMembership.find({
+                userId: req.user._id,
+                isRemoved: false,
             })
-            .lean(),
-    ]);
+                .sort({ updatedAt: -1 })
+                .populate({
+                    path: 'groupId',
+                    select: "_id name description avatarUrl lastMessageId updatedAt",
+                    populate: {
+                        path: 'lastMessageId',
+                        select: "_id content senderId groupId chatType isDeleted sentAt createdAt",
+                        populate: {
+                            path: 'senderId',
+                            select: '_id displayName username avatarUrl',
+                        },
+                    }
+                })
+                .lean(),
+        ]);
 
-    const currentUserIdStr = req.user._id.toString();
-    const getMsgSenderId = (msg) =>
-        typeof msg?.senderId === "object" && msg.senderId !== null
-            ? msg.senderId._id?.toString()
-            : msg?.senderId?.toString();
+        const currentUserIdStr = req.user._id.toString();
+        const getMsgSenderId = (msg) =>
+            typeof msg?.senderId === "object" && msg.senderId !== null
+                ? msg.senderId._id?.toString()
+                : msg?.senderId?.toString();
 
-    const directChatIds = directChats
-        .filter((c) => c.lastMessageId && typeof c.lastMessageId === "object")
-        .map((c) => c._id);
-    const activeGroupMemberships = groupChats.filter((m) => m.groupId);
+        const directChatIds = directChats
+            .filter((c) => c.lastMessageId && typeof c.lastMessageId === "object")
+            .map((c) => c._id);
+        const activeGroupMemberships = groupChats.filter((m) => m.groupId);
 
-    const mySentGroupIds = [];
-    const otherSentGroupIds = [];
-    for (const membership of activeGroupMemberships) {
-        const lastMsg = membership.groupId.lastMessageId;
-        if (!lastMsg || typeof lastMsg !== "object") continue;
-        if (getMsgSenderId(lastMsg) === currentUserIdStr) {
-            mySentGroupIds.push(membership.groupId._id);
-        } else {
-            otherSentGroupIds.push(membership.groupId._id);
-        }
-    }
-
-    const readStateOr = [];
-    if (directChatIds.length > 0) {
-        readStateOr.push({ chatType: "direct", directChat: { $in: directChatIds } });
-    }
-    if (mySentGroupIds.length > 0) {
-        readStateOr.push({ chatType: "group", groupId: { $in: mySentGroupIds } });
-    }
-    if (otherSentGroupIds.length > 0) {
-        readStateOr.push({
-            chatType: "group",
-            groupId: { $in: otherSentGroupIds },
-            userId: req.user._id,
-        });
-    }
-
-    const readStates = readStateOr.length > 0
-        ? await ConversationReadState.find({ $or: readStateOr })
-            .select("chatType directChat groupId userId lastReadMessageId")
-            .populate("lastReadMessageId", "_id sentAt createdAt")
-            .lean()
-        : [];
-
-    const myCursorByKey = new Map();
-    const otherCursorsByKey = new Map();
-
-    for (const rs of readStates) {
-        if (!rs.lastReadMessageId) continue;
-        const targetId = rs.chatType === "direct" ? rs.directChat?.toString() : rs.groupId?.toString();
-        if (!targetId) continue;
-        const key = `${rs.chatType}:${targetId}`;
-
-        if (rs.userId.toString() === currentUserIdStr) {
-            myCursorByKey.set(key, rs.lastReadMessageId);
-        } else {
-            if (!otherCursorsByKey.has(key)) {
-                otherCursorsByKey.set(key, []);
-            }
-            otherCursorsByKey.get(key).push(rs.lastReadMessageId);
-        }
-    }
-
-    const enrichChat = (chatObj, chatType, membershipUnreadCount) => {
-        const key = `${chatType}:${chatObj._id.toString()}`;
-        const myCursor = myCursorByKey.get(key) || null;
-        const otherCursors = otherCursorsByKey.get(key) || [];
-        const hasLastMessageObj = chatObj.lastMessageId && typeof chatObj.lastMessageId === "object";
-        const lastMessage = hasLastMessageObj
-            ? {
-                ...chatObj.lastMessageId,
-                isRead: getMessageReadStatus({
-                    message: chatObj.lastMessageId,
-                    currentUserId: req.user._id,
-                    myReadCursor: myCursor,
-                    otherReadCursors: otherCursors,
-                }),
-            }
-            : chatObj.lastMessageId;
-
-        let unreadCount = 0;
-        if (hasLastMessageObj) {
-            if (myCursor && isMessageCoveredByCursor(lastMessage, myCursor)) {
-                unreadCount = 0;
-            } else if (chatType === "group") {
-                unreadCount = membershipUnreadCount ?? 0;
+        const mySentGroupIds = [];
+        const otherSentGroupIds = [];
+        for (const membership of activeGroupMemberships) {
+            const lastMsg = membership.groupId.lastMessageId;
+            if (!lastMsg || typeof lastMsg !== "object") continue;
+            if (getMsgSenderId(lastMsg) === currentUserIdStr) {
+                mySentGroupIds.push(membership.groupId._id);
             } else {
-                unreadCount = getMsgSenderId(lastMessage) === currentUserIdStr
-                    ? 0
-                    : (chatObj.unreadCount ?? 0);
+                otherSentGroupIds.push(membership.groupId._id);
             }
         }
 
-        return {
-            ...chatObj,
-            chatType,
-            lastMessageId: lastMessage,
-            unreadCount,
-            myLastReadMessageId: myCursor?._id || null,
-            myLastReadSentAt: myCursor?.sentAt || null,
+        const readStateOr = [];
+        if (directChatIds.length > 0) {
+            readStateOr.push({ chatType: "direct", directChat: { $in: directChatIds } });
+        }
+        if (mySentGroupIds.length > 0) {
+            readStateOr.push({ chatType: "group", groupId: { $in: mySentGroupIds } });
+        }
+        if (otherSentGroupIds.length > 0) {
+            readStateOr.push({
+                chatType: "group",
+                groupId: { $in: otherSentGroupIds },
+                userId: req.user._id,
+            });
+        }
+
+        const readStates = readStateOr.length > 0
+            ? await ConversationReadState.find({ $or: readStateOr })
+                .select("chatType directChat groupId userId lastReadMessageId")
+                .populate("lastReadMessageId", "_id sentAt createdAt")
+                .lean()
+            : [];
+
+        const myCursorByKey = new Map();
+        const otherCursorsByKey = new Map();
+
+        for (const rs of readStates) {
+            if (!rs.lastReadMessageId) continue;
+            const targetId = rs.chatType === "direct" ? rs.directChat?.toString() : rs.groupId?.toString();
+            if (!targetId) continue;
+            const key = `${rs.chatType}:${targetId}`;
+
+            if (rs.userId.toString() === currentUserIdStr) {
+                myCursorByKey.set(key, rs.lastReadMessageId);
+            } else {
+                if (!otherCursorsByKey.has(key)) {
+                    otherCursorsByKey.set(key, []);
+                }
+                otherCursorsByKey.get(key).push(rs.lastReadMessageId);
+            }
+        }
+
+        const enrichChat = (chatObj, chatType, membershipUnreadCount) => {
+            const key = `${chatType}:${chatObj._id.toString()}`;
+            const myCursor = myCursorByKey.get(key) || null;
+            const otherCursors = otherCursorsByKey.get(key) || [];
+            const hasLastMessageObj = chatObj.lastMessageId && typeof chatObj.lastMessageId === "object";
+            const lastMessage = hasLastMessageObj
+                ? {
+                    ...chatObj.lastMessageId,
+                    isRead: getMessageReadStatus({
+                        message: chatObj.lastMessageId,
+                        currentUserId: req.user._id,
+                        myReadCursor: myCursor,
+                        otherReadCursors: otherCursors,
+                    }),
+                }
+                : chatObj.lastMessageId;
+
+            let unreadCount = 0;
+            if (hasLastMessageObj) {
+                if (myCursor && isMessageCoveredByCursor(lastMessage, myCursor)) {
+                    unreadCount = 0;
+                } else if (chatType === "group") {
+                    unreadCount = membershipUnreadCount ?? 0;
+                } else {
+                    unreadCount = getMsgSenderId(lastMessage) === currentUserIdStr
+                        ? 0
+                        : (chatObj.unreadCount ?? 0);
+                }
+            }
+
+            return {
+                ...chatObj,
+                chatType,
+                lastMessageId: lastMessage,
+                unreadCount,
+                myLastReadMessageId: myCursor?._id || null,
+                myLastReadSentAt: myCursor?.sentAt || null,
+            };
         };
-    };
 
-    const recentChats = [
-        ...directChats.map((chat) => enrichChat(chat, "direct")),
-        ...activeGroupMemberships.map((membership) =>
-            enrichChat(membership.groupId, "group", membership.unreadCount)
-        ),
-    ].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        const recentChats = [
+            ...directChats.map((chat) => enrichChat(chat, "direct")),
+            ...activeGroupMemberships.map((membership) =>
+                enrichChat(membership.groupId, "group", membership.unreadCount)
+            ),
+        ].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
-    return res.status(200)
-        .json(new ApiResponse(200, recentChats, "Recent chats fetched successfully",));
+        // Only read cache if Redis is connected
+        if (redisClient.isOpen) {
+            await redisClient.setEx(
+                cachedKey,
+                300,
+                JSON.stringify(recentChats),
+            );
+        }
+
+        return res.status(200)
+            .json(new ApiResponse(
+                200,
+                recentChats,
+                "Recent chats fetched successfully",
+            ));
+    } catch (error) {
+        console.error("Internal Server Error", error)
+        throw ApiError(500, "Internal Server Error");
+
+    }
+
 });
 
 

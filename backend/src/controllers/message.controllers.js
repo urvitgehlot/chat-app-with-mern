@@ -284,6 +284,25 @@ const getChatMessagesByPage = asyncHandler(async (req, res) => {
         ? { directChat: new mongoose.Types.ObjectId(chatId), chatType: "direct" }
         : { groupId: new mongoose.Types.ObjectId(chatId), chatType: "group" };
 
+    const cachedKey = `${chatType}:${chatId}:message:${page}:${limit}`;
+
+    // Only read cache if Redis is connected
+    if (redisClient.isOpen) {
+        const cachedChats = await redisClient.get(cachedKey);
+
+        if (cachedChats) {
+            return res.status(200)
+                .json(
+                    new ApiResponse(
+                        200,
+                        JSON.parse(cachedChats),
+                        "Messages fetched successfully",
+                        'redis'
+                    ),
+                );
+        }
+    }
+
     const pipeline = [
         {
             $match: matchQuery
@@ -376,6 +395,25 @@ const getChatMessagesByPage = asyncHandler(async (req, res) => {
 
     const total = messages[0].totalCount[0]?.count || 0;
     const totalPages = Math.ceil(total / limit);
+
+
+    // Only read cache if Redis is connected
+    if (redisClient.isOpen) {
+        await redisClient.setEx(
+            cachedKey,
+            300,
+            JSON.stringify({
+                messages: messagesWithReadStatus,
+                directChat: directChat,
+                group: group,
+                total: total,
+                totalPages: totalPages,
+                myLastReadMessageId: myReadCursor?._id || null,
+                myLastReadSentAt: myReadCursor?.sentAt || null,
+                otherReadStates: otherReadCursors,
+            }),
+        );
+    }
 
     return res.status(200).json(
         new ApiResponse(

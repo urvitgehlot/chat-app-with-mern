@@ -3,6 +3,7 @@ import connectDB from "./db/index.js"
 import { app } from "./app.js"
 import { createServer } from "http"
 import { initSocketIO } from "./socket/index.js"
+import { connectRedis } from "../config/redis.js"
 
 dotenv.config({
     path: ".env",
@@ -14,7 +15,9 @@ initSocketIO(server);
 
 
 connectDB()
-    .then(() => {
+    .then(async () => {
+        await connectRedis();
+
         server.on("error", (error) => {
             console.log("Server Error: ", error)
             throw error
